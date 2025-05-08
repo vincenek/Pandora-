@@ -2,23 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mind Vault - Thought Management System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mind Vault Pro - Secure Thought Management</title>
     <style>
         :root {
-            --bg-primary: #0a0a0a;
-            --bg-secondary: #1a1a1a;
-            --accent: #2ecc71;
-            --text-primary: #ecf0f1;
-            --text-secondary: #bdc3c7;
-            --border: #2c3e50;
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --accent: #238636;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --border: #30363d;
+            --success: #3fb950;
+            --warning: #d29922;
+            --error: #f85149;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'SF Mono', 'Courier New', monospace;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
         }
 
         body {
@@ -26,37 +29,42 @@
             color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 1rem;
         }
 
         .header {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 3rem;
-            padding-bottom: 1rem;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            padding: 1rem 0;
             border-bottom: 1px solid var(--border);
         }
 
         .toolbar {
             display: flex;
-            gap: 1rem;
-            margin-bottom: 2rem;
+            gap: 0.5rem;
+            flex-wrap: wrap;
         }
 
         button {
             background: var(--bg-secondary);
             color: var(--text-primary);
             border: 1px solid var(--border);
-            padding: 0.8rem 1.5rem;
+            padding: 0.75rem 1.25rem;
             cursor: pointer;
-            transition: all 0.3s ease;
-            border-radius: 4px;
+            transition: all 0.2s ease;
+            border-radius: 6px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         button:hover {
@@ -66,10 +74,11 @@
 
         .thought-form {
             background: var(--bg-secondary);
-            padding: 2rem;
-            border-radius: 8px;
+            padding: 1.5rem;
+            border-radius: 12px;
             margin-bottom: 2rem;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--border);
+            display: none;
         }
 
         .form-group {
@@ -78,16 +87,18 @@
 
         textarea {
             width: 100%;
-            min-height: 200px;
+            min-height: 150px;
             background: var(--bg-primary);
             color: var(--text-primary);
             border: 1px solid var(--border);
             padding: 1rem;
-            border-radius: 4px;
+            border-radius: 8px;
             resize: vertical;
+            font-size: 1rem;
+            line-height: 1.5;
         }
 
-        .tag-input {
+        .tag-input-container {
             display: flex;
             flex-wrap: wrap;
             gap: 0.5rem;
@@ -96,31 +107,37 @@
 
         .tag {
             background: var(--bg-primary);
-            padding: 0.3rem 0.8rem;
+            padding: 0.25rem 0.75rem;
             border-radius: 20px;
             font-size: 0.9em;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            border: 1px solid var(--border);
         }
 
         .thought-list {
             display: grid;
-            gap: 1.5rem;
+            gap: 1rem;
         }
 
         .thought-card {
             background: var(--bg-secondary);
-            padding: 1.5rem;
+            padding: 1.25rem;
             border-radius: 8px;
-            border-left: 4px solid var(--accent);
+            border: 1px solid var(--border);
             position: relative;
+            transition: transform 0.2s ease;
+        }
+
+        .thought-card:hover {
+            transform: translateY(-2px);
         }
 
         .timestamp {
             color: var(--text-secondary);
-            font-size: 0.9em;
-            margin-bottom: 0.5rem;
+            font-size: 0.85em;
+            margin-bottom: 0.75rem;
         }
 
         .links-section {
@@ -132,7 +149,9 @@
         .link-item {
             color: var(--accent);
             cursor: pointer;
-            text-decoration: underline;
+            text-decoration: none;
+            display: inline-block;
+            margin-right: 0.5rem;
         }
 
         .modal {
@@ -146,45 +165,123 @@
             justify-content: center;
             align-items: center;
             z-index: 1000;
+            backdrop-filter: blur(5px);
         }
 
         .modal-content {
             background: var(--bg-secondary);
-            padding: 2rem;
-            border-radius: 8px;
+            padding: 1.5rem;
+            border-radius: 12px;
             width: 90%;
             max-width: 500px;
+            border: 1px solid var(--border);
+        }
+
+        input[type="text"], input[type="password"], select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            margin: 0.5rem 0;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0.5rem;
+            }
+            
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            button {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .thought-form {
+                padding: 1rem;
+            }
+            
+            .modal-content {
+                padding: 1rem;
+            }
+        }
+
+        .loading {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 9999;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: none;
+            z-index: 1001;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header class="header">
-            <h1>🔒 Mind Vault</h1>
+            <h1>🔐 Mind Vault Pro</h1>
             <div class="toolbar">
-                <button id="newThoughtBtn">+ New Thought</button>
-                <button id="exportBtn">Export Data</button>
+                <button id="newThoughtBtn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    New Thought
+                </button>
+                <button id="exportBtn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                    </svg>
+                    Export
+                </button>
             </div>
         </header>
 
-        <div class="thought-form" id="entryForm" style="display: none;">
+        <form class="thought-form" id="entryForm" onsubmit="return false;">
             <div class="form-group">
-                <textarea id="thoughtText" placeholder="Enter your thought..."></textarea>
+                <textarea id="thoughtText" placeholder="Write your thought here..." required></textarea>
             </div>
             <div class="form-group">
-                <input type="text" id="tagsInput" placeholder="Add tags (comma separated)">
-                <div class="tag-input" id="tagsContainer"></div>
+                <input type="text" id="tagsInput" placeholder="Add tags (press Enter to add)">
+                <div class="tag-input-container" id="tagsContainer"></div>
             </div>
             <div class="form-group">
-                <button onclick="showLinkModal()">Link Thoughts</button>
+                <button type="button" onclick="VaultUI.showLinkModal()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                    </svg>
+                    Link Thoughts
+                </button>
                 <div class="links-section" id="linksContainer"></div>
             </div>
-            <button onclick="saveThought()">Save Thought</button>
-        </div>
+            <div class="toolbar">
+                <button type="submit" onclick="VaultManager.saveThought()">Save Thought</button>
+                <button type="button" onclick="VaultUI.toggleForm()">Cancel</button>
+            </div>
+        </form>
 
         <div class="filters">
-            <input type="text" id="searchInput" placeholder="Search thoughts...">
-            <select id="tagFilter">
+            <input type="text" id="searchInput" placeholder="Search thoughts..." aria-label="Search thoughts">
+            <select id="tagFilter" aria-label="Filter by tag">
                 <option value="">All Tags</option>
             </select>
         </div>
@@ -192,114 +289,150 @@
         <main class="thought-list" id="vault"></main>
     </div>
 
-    <div id="passwordModal" class="modal">
+    <div id="authModal" class="modal">
         <div class="modal-content">
-            <h2>Vault Authentication</h2>
-            <input type="password" id="passwordInput" placeholder="Enter password">
-            <button onclick="handleAuth()">Unlock</button>
+            <h2>🔒 Vault Authentication</h2>
+            <input type="password" id="passwordInput" placeholder="Enter passphrase" autocomplete="current-password">
+            <div class="toolbar" style="margin-top: 1rem;">
+                <button onclick="VaultAuth.authenticate()">Unlock</button>
+                <button onclick="VaultAuth.clearStorage()">Reset Vault</button>
+            </div>
         </div>
     </div>
 
     <div id="linkModal" class="modal">
         <div class="modal-content">
-            <h2>Link Existing Thoughts</h2>
-            <div id="linkSearchResults"></div>
+            <h2>🔗 Link Thoughts</h2>
+            <input type="text" id="linkSearch" placeholder="Search thoughts to link...">
+            <div id="linkResults" class="thought-list" style="margin-top: 1rem;"></div>
         </div>
     </div>
 
+    <div class="loading" id="loading">⏳ Loading...</div>
+    <div class="toast" id="toast"></div>
+
     <script>
-        class MindVault {
-            constructor() {
-                this.thoughts = JSON.parse(localStorage.getItem('mindVault')) || [];
+        class VaultManager {
+            static init() {
+                this.thoughts = JSON.parse(localStorage.getItem('mvThoughts') || [];
                 this.password = localStorage.getItem('mvPassword');
-                this.currentLinks = [];
+                this.currentLinks = new Set();
                 
-                this.init();
+                window.addEventListener('DOMContentLoaded', () => {
+                    VaultAuth.checkAuthState();
+                    VaultUI.initEventListeners();
+                    VaultUI.renderVault();
+                });
             }
 
-            init() {
-                if (!this.password) this.showPasswordModal('set');
-                else this.showPasswordModal('auth');
+            static saveThought() {
+                if (!VaultAuth.authenticated) return VaultAuth.showModal();
                 
-                this.registerEventListeners();
-                this.renderVault();
-            }
+                const thoughtText = document.getElementById('thoughtText').value.trim();
+                if (!thoughtText) return VaultUI.showToast('Thought cannot be empty!', 'error');
 
-            registerEventListeners() {
-                document.getElementById('newThoughtBtn').addEventListener('click', () => this.toggleForm());
-                document.getElementById('exportBtn').addEventListener('click', () => this.exportData());
-                document.getElementById('searchInput').addEventListener('input', () => this.renderVault());
-                document.getElementById('tagFilter').addEventListener('change', () => this.renderVault());
-                document.getElementById('tagsInput').addEventListener('keyup', (e) => this.handleTagInput(e));
-            }
-
-            showPasswordModal(type) {
-                const modal = document.getElementById('passwordModal');
-                modal.style.display = 'flex';
-                
-                if (type === 'set') {
-                    modal.querySelector('h2').textContent = 'Set Vault Password';
-                    modal.querySelector('button').textContent = 'Set Password';
-                }
-            }
-
-            handleAuth() {
-                const input = document.getElementById('passwordInput').value;
-                if (!this.password) {
-                    this.password = btoa(input);
-                    localStorage.setItem('mvPassword', this.password);
-                    this.passwordModal.style.display = 'none';
-                } else {
-                    if (btoa(input) === this.password) {
-                        this.passwordModal.style.display = 'none';
-                    } else {
-                        alert('Invalid password');
-                    }
-                }
-            }
-
-            toggleForm() {
-                const form = document.getElementById('entryForm');
-                form.style.display = form.style.display === 'none' ? 'block' : 'none';
-            }
-
-            saveThought() {
                 const thought = {
                     id: Date.now(),
-                    text: document.getElementById('thoughtText').value,
-                    tags: [...new Set(document.getElementById('tagsContainer').querySelectorAll('.tag')
-                        .map(tag => tag.textContent.trim())],
+                    text: thoughtText,
+                    tags: Array.from(document.querySelectorAll('#tagsContainer .tag'))
+                        .map(tag => tag.dataset.tag),
                     timestamp: new Date().toISOString(),
-                    links: this.currentLinks
+                    links: Array.from(this.currentLinks)
                 };
 
                 this.thoughts.unshift(thought);
-                localStorage.setItem('mindVault', JSON.stringify(this.thoughts));
-                this.renderVault();
-                this.toggleForm();
+                localStorage.setItem('mvThoughts', JSON.stringify(this.thoughts));
+                
+                VaultUI.clearForm();
+                VaultUI.renderVault();
+                VaultUI.showToast('Thought saved successfully!', 'success');
             }
 
-            renderVault() {
+            static exportData() {
+                const data = JSON.stringify(this.thoughts);
+                const blob = new Blob([data], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `mindvault-${new Date().toISOString()}.json`;
+                a.click();
+                VaultUI.showToast('Export started', 'success');
+            }
+        }
+
+        class VaultUI {
+            static initEventListeners() {
+                // Form interactions
+                document.getElementById('newThoughtBtn').addEventListener('click', () => this.toggleForm());
+                document.getElementById('exportBtn').addEventListener('click', () => VaultManager.exportData());
+                
+                // Search and filter
+                document.getElementById('searchInput').addEventListener('input', () => this.renderVault());
+                document.getElementById('tagFilter').addEventListener('change', () => this.renderVault());
+                
+                // Tag input handling
+                document.getElementById('tagsInput').addEventListener('keydown', e => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.addTag(e.target.value.trim());
+                        e.target.value = '';
+                    }
+                });
+
+                // Link modal interactions
+                document.getElementById('linkSearch').addEventListener('input', e => {
+                    this.renderLinkResults(e.target.value);
+                });
+            }
+
+            static toggleForm() {
+                if (!VaultAuth.authenticated) return VaultAuth.showModal();
+                const form = document.getElementById('entryForm');
+                form.style.display = form.style.display === 'none' ? 'block' : 'none';
+                if (form.style.display === 'block') document.getElementById('thoughtText').focus();
+            }
+
+            static renderVault() {
                 const searchTerm = document.getElementById('searchInput').value.toLowerCase();
                 const selectedTag = document.getElementById('tagFilter').value;
 
-                const filtered = this.thoughts.filter(thought => {
+                const filtered = VaultManager.thoughts.filter(thought => {
                     const matchesSearch = thought.text.toLowerCase().includes(searchTerm);
                     const matchesTag = !selectedTag || thought.tags.includes(selectedTag);
                     return matchesSearch && matchesTag;
                 });
 
-                document.getElementById('vault').innerHTML = filtered.map(thought => `
+                const vaultEl = document.getElementById('vault');
+                vaultEl.innerHTML = filtered.map(thought => `
                     <div class="thought-card" data-id="${thought.id}">
-                        <div class="timestamp">${new Date(thought.timestamp).toLocaleString()}</div>
-                        <div>${thought.text}</div>
-                        <div class="tags">${thought.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+                        <div class="timestamp">
+                            ${new Date(thought.timestamp).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}
+                        </div>
+                        <div class="content">${thought.text.replace(/\n/g, '<br>')}</div>
+                        ${thought.tags.length ? `
+                            <div class="tag-input-container" style="margin-top: 1rem;">
+                                ${thought.tags.map(tag => `
+                                    <span class="tag" data-tag="${tag}">${tag}</span>
+                                `).join('')}
+                            </div>
+                        ` : ''}
                         ${thought.links.length ? `
                             <div class="links-section">
-                                <strong>Linked:</strong>
-                                ${thought.links.map(id => `
-                                    <span class="link-item" data-target="${id}">#${id}</span>
-                                `).join('')}
+                                <strong>Linked to:</strong>
+                                ${thought.links.map(id => {
+                                    const linkedThought = VaultManager.thoughts.find(t => t.id === id);
+                                    return linkedThought ? `
+                                        <span class="link-item" onclick="VaultUI.navigateToThought(${id})">
+                                            #${id} - ${linkedThought.text.substring(0, 20)}...
+                                        </span>
+                                    ` : '';
+                                }).join('')}
                             </div>
                         ` : ''}
                     </div>
@@ -308,29 +441,140 @@
                 this.updateTagFilter();
             }
 
-            updateTagFilter() {
-                const allTags = [...new Set(this.thoughts.flatMap(t => t.tags))];
-                const filter = document.getElementById('tagFilter');
-                filter.innerHTML = `<option value="">All Tags</option>${
+            static updateTagFilter() {
+                const allTags = [...new Set(VaultManager.thoughts.flatMap(t => t.tags))];
+                const filterEl = document.getElementById('tagFilter');
+                filterEl.innerHTML = `<option value="">All Tags</option>${
                     allTags.map(tag => `<option>${tag}</option>`).join('')
                 }`;
             }
 
-            exportData() {
-                const data = JSON.stringify(this.thoughts);
-                const blob = new Blob([data], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `mindvault-${new Date().toISOString()}.json`;
-                a.click();
+            static addTag(value) {
+                if (!value) return;
+                const tag = value.startsWith('#') ? value : `#${value}`;
+                const tagsContainer = document.getElementById('tagsContainer');
+                
+                if ([...tagsContainer.children].some(el => el.dataset.tag === tag)) {
+                    return this.showToast('Tag already exists!', 'warning');
+                }
+
+                const tagEl = document.createElement('span');
+                tagEl.className = 'tag';
+                tagEl.dataset.tag = tag;
+                tagEl.innerHTML = `
+                    ${tag}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" 
+                         stroke-width="2" style="cursor:pointer;" onclick="this.parentElement.remove()">
+                        <path d="M18 6L6 18M6 6l12 12"/>
+                    </svg>
+                `;
+                tagsContainer.appendChild(tagEl);
             }
 
-            // Additional methods for tag handling and linking would go here
+            static showLinkModal() {
+                const modal = document.getElementById('linkModal');
+                modal.style.display = 'flex';
+                this.renderLinkResults();
+            }
+
+            static renderLinkResults(query = '') {
+                const resultsEl = document.getElementById('linkResults');
+                resultsEl.innerHTML = VaultManager.thoughts
+                    .filter(thought => 
+                        thought.text.toLowerCase().includes(query.toLowerCase()) &&
+                        !VaultManager.currentLinks.has(thought.id)
+                    )
+                    .map(thought => `
+                        <div class="thought-card" onclick="VaultUI.toggleLink(${thought.id})">
+                            <div class="timestamp">${new Date(thought.timestamp).toLocaleDateString()}</div>
+                            <div>${thought.text.substring(0, 50)}...</div>
+                        </div>
+                    `).join('');
+            }
+
+            static toggleLink(thoughtId) {
+                const links = VaultManager.currentLinks;
+                links.has(thoughtId) ? links.delete(thoughtId) : links.add(thoughtId);
+                this.updateLinksDisplay();
+            }
+
+            static updateLinksDisplay() {
+                const linksContainer = document.getElementById('linksContainer');
+                linksContainer.innerHTML = Array.from(VaultManager.currentLinks)
+                    .map(id => {
+                        const thought = VaultManager.thoughts.find(t => t.id === id);
+                        return thought ? `
+                            <span class="link-item" onclick="VaultUI.toggleLink(${id})">
+                                #${id} - ${thought.text.substring(0, 20)}...
+                            </span>
+                        ` : '';
+                    }).join('');
+            }
+
+            static showToast(message, type = 'info') {
+                const toast = document.getElementById('toast');
+                toast.textContent = message;
+                toast.style.display = 'block';
+                toast.style.background = `var(--${type})`;
+                setTimeout(() => toast.style.display = 'none', 3000);
+            }
+
+            static clearForm() {
+                document.getElementById('thoughtText').value = '';
+                document.getElementById('tagsContainer').innerHTML = '';
+                VaultManager.currentLinks.clear();
+                this.updateLinksDisplay();
+                this.toggleForm();
+            }
+        }
+
+        class VaultAuth {
+            static authenticated = false;
+
+            static checkAuthState() {
+                if (!localStorage.getItem('mvPassword')) {
+                    this.showModal('setup');
+                } else {
+                    this.showModal('auth');
+                }
+            }
+
+            static showModal(mode = 'auth') {
+                const modal = document.getElementById('authModal');
+                modal.style.display = 'flex';
+                const input = document.getElementById('passwordInput');
+                input.placeholder = mode === 'setup' ? 'Set new passphrase' : 'Enter passphrase';
+                input.focus();
+            }
+
+            static authenticate() {
+                const input = document.getElementById('passwordInput').value;
+                const stored = localStorage.getItem('mvPassword');
+
+                if (!stored) {
+                    localStorage.setItem('mvPassword', btoa(input));
+                    this.authenticated = true;
+                    document.getElementById('authModal').style.display = 'none';
+                    VaultUI.showToast('Vault created!', 'success');
+                } else {
+                    if (btoa(input) === stored) {
+                        this.authenticated = true;
+                        document.getElementById('authModal').style.display = 'none';
+                        VaultUI.renderVault();
+                    } else {
+                        VaultUI.showToast('Invalid passphrase!', 'error');
+                    }
+                }
+            }
+
+            static clearStorage() {
+                localStorage.clear();
+                location.reload();
+            }
         }
 
         // Initialize application
-        const vault = new MindVault();
+        VaultManager.init();
     </script>
 </body>
 </html>
