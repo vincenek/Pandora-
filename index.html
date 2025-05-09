@@ -3,24 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NeuroVault - Intelligent Thought Management</title>
+    <title>Pandora - Thought Vault</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-primary: #0a0a0a;
             --bg-secondary: #1a1a1a;
-            --accent: #2ecc71;
-            --text-primary: #ecf0f1;
-            --text-secondary: #bdc3c7;
-            --border: #2c3e50;
-            --success: #27ae60;
-            --error: #e74c3c;
+            --accent: #8A2BE2;
+            --text-primary: #f0f0f0;
+            --text-secondary: #b0b0b0;
+            --border: #333333;
+            --success: #00cc88;
+            --error: #ff4444;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-family: 'Poppins', system-ui, -apple-system, sans-serif;
         }
 
         body {
@@ -36,23 +37,21 @@
             padding: 2rem 1rem;
         }
 
-        /* Enhanced Header Styles */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 3rem;
             padding: 1.5rem;
-            background: var(--bg-secondary);
-            border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, #1f1f1f 100%);
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
         }
 
-        /* Modern Button Styles */
         .btn {
             padding: 0.8rem 1.5rem;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             transition: all 0.2s ease;
             display: inline-flex;
@@ -64,28 +63,28 @@
         .btn-primary {
             background: var(--accent);
             color: var(--text-primary);
+            box-shadow: 0 4px 12px rgba(138,43,226,0.3);
         }
 
         .btn-primary:hover {
-            opacity: 0.9;
             transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(138,43,226,0.4);
         }
 
-        /* Thought Input Section */
         .thought-form {
             background: var(--bg-secondary);
             padding: 2rem;
-            border-radius: 12px;
+            border-radius: 16px;
             margin-bottom: 2rem;
             display: none;
+            border: 1px solid var(--border);
         }
 
         .thought-form.active {
             display: block;
-            animation: slideIn 0.3s ease;
+            animation: slideIn 0.3s cubic-bezier(0.4,0,0.2,1);
         }
 
-        /* Tag System */
         .tag-container {
             display: flex;
             flex-wrap: wrap;
@@ -94,16 +93,17 @@
         }
 
         .tag {
-            background: var(--bg-primary);
+            background: rgba(138,43,226,0.15);
+            color: var(--accent);
             padding: 0.4rem 0.8rem;
             border-radius: 20px;
             font-size: 0.9em;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            border: 1px solid rgba(138,43,226,0.3);
         }
 
-        /* Thought Cards */
         .thought-grid {
             display: grid;
             gap: 1.5rem;
@@ -115,55 +115,75 @@
             padding: 1.5rem;
             border-radius: 12px;
             border-left: 4px solid var(--accent);
-            transition: transform 0.2s ease;
+            transition: all 0.2s ease;
+            position: relative;
         }
 
         .thought-card:hover {
             transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
         }
 
-        /* Authentication Modal */
         .auth-modal {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0,0,0,0.95);
             display: none;
             justify-content: center;
             align-items: center;
             z-index: 1000;
+            backdrop-filter: blur(8px);
         }
 
         .auth-content {
             background: var(--bg-secondary);
             padding: 2rem;
-            border-radius: 12px;
+            border-radius: 16px;
             width: 90%;
             max-width: 400px;
+            text-align: center;
         }
 
-        /* Animations */
+        #searchInput {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.1rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            transition: all 0.2s ease;
+        }
+
+        #searchInput:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(138,43,226,0.2);
+            outline: none;
+        }
+
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        /* Mobile Responsive */
         @media (max-width: 768px) {
             .header {
                 flex-direction: column;
-                gap: 1rem;
+                gap: 1.5rem;
                 text-align: center;
             }
 
             .thought-form {
-                padding: 1rem;
+                padding: 1.5rem;
             }
 
-            .thought-grid {
-                grid-template-columns: 1fr;
+            .btn {
+                width: 100%;
+                justify-content: center;
             }
         }
     </style>
@@ -171,10 +191,13 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>🧠 NeuroVault</h1>
+            <h1>📦 Pandora</h1>
             <div class="toolbar">
                 <button class="btn btn-primary" id="newThoughtBtn">
-                    <span>+ New Thought</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    New Thought
                 </button>
             </div>
         </header>
@@ -184,7 +207,7 @@
                 <div class="form-group">
                     <textarea 
                         id="thoughtInput" 
-                        placeholder="Enter your thought..." 
+                        placeholder="Your deepest thought..." 
                         rows="5"
                         required
                     ></textarea>
@@ -194,16 +217,17 @@
                     <input 
                         type="text" 
                         id="tagInput" 
-                        placeholder="Add tags (press Enter to add)"
+                        placeholder="Add tags (press Enter)"
+                        class="tag-input"
                     >
                     <div class="tag-container" id="tagContainer"></div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" style="display: flex; gap: 1rem;">
                     <button type="button" class="btn btn-primary" id="saveThought">
                         Save Thought
                     </button>
-                    <button type="button" class="btn" id="cancelThought">
+                    <button type="button" class="btn" id="cancelThought" style="background: var(--bg-primary);">
                         Cancel
                     </button>
                 </div>
@@ -213,9 +237,9 @@
                 <input 
                     type="text" 
                     id="searchInput" 
-                    placeholder="Search thoughts..."
+                    placeholder="🔍 Search thoughts..."
                 >
-                <select id="tagFilter">
+                <select id="tagFilter" class="tag-filter">
                     <option value="">All Tags</option>
                 </select>
             </div>
@@ -226,25 +250,26 @@
 
     <div class="auth-modal" id="authModal">
         <div class="auth-content">
-            <h2>🔒 Unlock Vault</h2>
+            <h2>🔒 Unlock Pandora</h2>
             <input 
                 type="password" 
                 id="passwordInput" 
-                placeholder="Enter your passphrase"
+                placeholder="Enter your secret phrase"
+                class="auth-input"
             >
-            <div class="toolbar" style="margin-top: 1rem;">
+            <div class="toolbar" style="margin-top: 1.5rem; gap: 1rem;">
                 <button class="btn btn-primary" id="unlockBtn">
-                    Unlock
+                    Unlock Vault
                 </button>
             </div>
         </div>
     </div>
 
     <script>
-        class NeuroVault {
+        class PandoraVault {
             constructor() {
-                this.thoughts = JSON.parse(localStorage.getItem('neuroVault')) || [];
-                this.password = localStorage.getItem('nvPassword');
+                this.thoughts = JSON.parse(localStorage.getItem('pandoraVault')) || [];
+                this.password = localStorage.getItem('pvPassword');
                 this.initialize();
             }
 
@@ -266,7 +291,7 @@
                 const password = prompt('Set your vault password:');
                 if (password) {
                     this.password = btoa(password);
-                    localStorage.setItem('nvPassword', this.password);
+                    localStorage.setItem('pvPassword', this.password);
                 }
             }
 
@@ -293,17 +318,22 @@
             }
 
             persistData() {
-                localStorage.setItem('neuroVault', JSON.stringify(this.thoughts));
+                localStorage.setItem('pandoraVault', JSON.stringify(this.thoughts));
             }
 
             renderThoughts() {
                 const grid = document.getElementById('thoughtGrid');
                 grid.innerHTML = this.thoughts.map(thought => `
                     <div class="thought-card">
-                        <div class="thought-date">
-                            ${new Date(thought.created).toLocaleDateString()}
+                        <div class="thought-date" style="color: var(--text-secondary); font-size: 0.9em;">
+                            ${new Date(thought.created).toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                            })}
                         </div>
-                        <div class="thought-content">
+                        <div class="thought-content" style="margin: 1rem 0;">
                             ${thought.content}
                         </div>
                         <div class="thought-tags">
@@ -316,12 +346,10 @@
             }
 
             setupEventListeners() {
-                // New Thought Button
                 document.getElementById('newThoughtBtn').addEventListener('click', () => {
                     document.getElementById('thoughtForm').classList.add('active');
                 });
 
-                // Save Thought
                 document.getElementById('saveThought').addEventListener('click', () => {
                     const content = document.getElementById('thoughtInput').value;
                     const tags = Array.from(document.querySelectorAll('.tag'))
@@ -333,12 +361,10 @@
                     }
                 });
 
-                // Cancel Thought
                 document.getElementById('cancelThought').addEventListener('click', () => {
                     this.clearForm();
                 });
 
-                // Tag Input
                 document.getElementById('tagInput').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
@@ -350,7 +376,6 @@
                     }
                 });
 
-                // Authentication
                 document.getElementById('unlockBtn').addEventListener('click', () => {
                     const input = document.getElementById('passwordInput').value;
                     if (this.verifyPassword(input)) {
@@ -370,6 +395,7 @@
                 const removeBtn = document.createElement('span');
                 removeBtn.textContent = '×';
                 removeBtn.style.cursor = 'pointer';
+                removeBtn.style.marginLeft = '6px';
                 removeBtn.onclick = () => tag.remove();
                 
                 tag.appendChild(removeBtn);
@@ -383,8 +409,8 @@
             }
         }
 
-        // Initialize Application
-        const vault = new NeuroVault();
+        // Initialize Pandora Vault
+        const pandora = new PandoraVault();
     </script>
 </body>
 </html>
