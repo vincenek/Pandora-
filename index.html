@@ -277,6 +277,7 @@
                 this.checkAuth();
                 this.setupEventListeners();
                 this.renderThoughts();
+                this.updateTagFilter();
             }
 
             checkAuth() {
@@ -315,15 +316,31 @@
                 this.thoughts.unshift(thought);
                 this.persistData();
                 this.renderThoughts();
+                this.updateTagFilter();
             }
 
             persistData() {
                 localStorage.setItem('pandoraVault', JSON.stringify(this.thoughts));
             }
 
+            filterThoughts() {
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                const selectedTag = document.getElementById('tagFilter').value;
+
+                return this.thoughts.filter(thought => {
+                    const matchesSearch = thought.content.toLowerCase().includes(searchTerm) ||
+                        thought.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+                    
+                    const matchesTag = !selectedTag || thought.tags.includes(selectedTag);
+                    
+                    return matchesSearch && matchesTag;
+                });
+            }
+
             renderThoughts() {
+                const filteredThoughts = this.filterThoughts();
                 const grid = document.getElementById('thoughtGrid');
-                grid.innerHTML = this.thoughts.map(thought => `
+                grid.innerHTML = filteredThoughts.map(thought => `
                     <div class="thought-card">
                         <div class="thought-date" style="color: var(--text-secondary); font-size: 0.9em;">
                             ${new Date(thought.created).toLocaleDateString('en-US', {
@@ -343,6 +360,14 @@
                         </div>
                     </div>
                 `).join('');
+            }
+
+            updateTagFilter() {
+                const allTags = [...new Set(this.thoughts.flatMap(t => t.tags))];
+                const tagFilter = document.getElementById('tagFilter');
+                tagFilter.innerHTML = `<option value="">All Tags</option>${
+                    allTags.map(tag => `<option>${tag}</option>`).join('')
+                }`;
             }
 
             setupEventListeners() {
@@ -383,6 +408,15 @@
                     } else {
                         alert('Invalid password!');
                     }
+                });
+
+                // Search functionality
+                document.getElementById('searchInput').addEventListener('input', () => {
+                    this.renderThoughts();
+                });
+
+                document.getElementById('tagFilter').addEventListener('change', () => {
+                    this.renderThoughts();
                 });
             }
 
