@@ -266,33 +266,170 @@
     </div>
 
     <script>
+        const CryptoLayer = {
+            async encrypt(plaintext, password) {
+                const salt = crypto.getRandomValues(new Uint8Array(16));
+                const iv = crypto.getRandomValues(new Uint8Array(16));
+                
+                const keyMaterial = await crypto.subtle.importKey(
+                    'raw',
+                    new TextEncoder().encode(password),
+                    'PBKDF2',
+                    false,
+                    ['deriveBits']
+                );
+
+                const rawKey = await crypto.subtle.deriveBits({
+                    name: 'PBKDF2',
+                    salt: salt,
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                }, keyMaterial, 512);
+
+                const keyBytes = new Uint8Array(rawKey);
+                const aesKey = await crypto.subtle.importKey(
+                    'raw',
+                    keyBytes.slice(0, 32),
+                    'AES-CBC',
+                    false,
+                    ['encrypt']
+                );
+
+                const encrypted = await crypto.subtle.encrypt(
+                    { name: 'AES-CBC', iv: iv },
+                    aesKey,
+                    new TextEncoder().encode(plaintext)
+                );
+
+                const xorCipher = this.xorBytes(new Uint8Array(encrypted), keyBytes.slice(32));
+                const combined = new Uint8Array([...salt, ...iv, ...xorCipher]);
+                return this.addDummies(this.arrayBufferToBase64(combined));
+            },
+
+            async decrypt(ciphertext, password) {
+                const cleanBase64 = this.removeDummies(ciphertext);
+                const combined = this.base64ToArrayBuffer(cleanBase64);
+                
+                const salt = combined.slice(0, 16);
+                const iv = combined.slice(16, 32);
+                const xorCipher = new Uint8Array(combined.slice(32));
+
+                const keyMaterial = await crypto.subtle.importKey(
+                    'raw',
+                    new TextEncoder().encode(password),
+                    'PBKDF2',
+                    false,
+                    ['deriveBits']
+                );
+
+                const rawKey = await crypto.subtle.deriveBits({
+                    name: 'PBKDF2',
+                    salt: salt,
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                }, keyMaterial, 512);
+
+                const keyBytes = new Uint8Array(rawKey);
+                const aesKey = await crypto.subtle.importKey(
+                    'raw',
+                    keyBytes.slice(0, 32),
+                    'AES-CBC',
+                    false,
+                    ['decrypt']
+                );
+
+                const aesData = this.xorBytes(xorCipher, keyBytes.slice(32));
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: 'AES-CBC', iv: iv },
+                    aesKey,
+                    aesData
+                );
+
+                return new TextDecoder().decode(decrypted);
+            },
+
+            xorBytes(data, key) {
+                return data.map((byte, i) => byte ^ key[i % key.length]);
+            },
+
+            addDummies(str) {
+                return str.match(/.{1,4}/g)?.map(chunk => 
+                    chunk + this.randomChar() + this.randomChar()
+                ).join('') || '';
+            },
+
+            removeDummies(str) {
+                return str.match(/.{1,6}/g)?.map(chunk => 
+                    chunk.substring(0,4)
+                ).join('') || '';
+            },
+
+            randomChar() {
+                return 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'[
+                    Math.floor(Math.random() * 64)
+                ];
+            },
+
+            arrayBufferToBase64(buffer) {
+                return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+            },
+
+            base64ToArrayBuffer(base64) {
+                return Uint8Array.from(atob(base64), c => c.charCodeAt(0)).buffer;
+            }
+        };
+
         class PandoraVault {
             constructor() {
-                this.thoughts = JSON.parse(localStorage.getItem('pandoraVault')) || [];
-                this.password = localStorage.getItem('pvPassword');
+                this.thoughts = [];
+                this.password = null;
                 this.initialize();
-            }
-
-            initialize() {
                 this.checkAuth();
-                this.setupEventListeners();
-                this.renderThoughts();
-                this.updateTagFilter();
             }
 
-            checkAuth() {
-                if (!this.password) {
-                    this.setPassword();
-                } else {
+            async checkAuth() {
+                const encryptedVault = localStorage.getItem('encryptedVault');
+                const legacyData = localStorage.getItem('pandoraVault');
+                
+                if (encryptedVault) {
                     this.showAuthModal();
+                } else if (legacyData) {
+                    this.migrateLegacyData(legacyData);
+                } else {
+                    this.setPassword();
                 }
             }
 
-            setPassword() {
+            async migrateLegacyData(legacyData) {
+                const password = prompt('Set a password to encrypt your existing data:');
+                if (!password) return;
+
+                try {
+                    const encrypted = await CryptoLayer.encrypt(legacyData, password);
+                    localStorage.setItem('encryptedVault', encrypted);
+                    localStorage.removeItem('pandoraVault');
+                    this.thoughts = JSON.parse(legacyData);
+                    this.password = password;
+                    this.renderThoughts();
+                } catch (error) {
+                    alert('Failed to migrate data. Please refresh and try again.');
+                }
+            }
+
+            initialize() {
+                this.setupEventListeners();
+                this.updateTagFilter();
+            }
+
+            async setPassword() {
                 const password = prompt('Set your vault password:');
-                if (password) {
-                    this.password = btoa(password);
-                    localStorage.setItem('pvPassword', this.password);
+                if (!password) return;
+
+                try {
+                    this.password = password;
+                    await this.persistData();
+                } catch (error) {
+                    alert('Failed to initialize vault. Please try again.');
                 }
             }
 
@@ -300,11 +437,7 @@
                 document.getElementById('authModal').style.display = 'flex';
             }
 
-            verifyPassword(input) {
-                return btoa(input) === this.password;
-            }
-
-            saveThought(content, tags) {
+            async saveThought(content, tags) {
                 const thought = {
                     id: Date.now(),
                     content,
@@ -314,13 +447,23 @@
                 };
 
                 this.thoughts.unshift(thought);
-                this.persistData();
+                await this.persistData();
                 this.renderThoughts();
                 this.updateTagFilter();
             }
 
-            persistData() {
-                localStorage.setItem('pandoraVault', JSON.stringify(this.thoughts));
+            async persistData() {
+                if (!this.password) return;
+                
+                try {
+                    const encrypted = await CryptoLayer.encrypt(
+                        JSON.stringify(this.thoughts),
+                        this.password
+                    );
+                    localStorage.setItem('encryptedVault', encrypted);
+                } catch (error) {
+                    alert('Failed to save data. Please check your connection.');
+                }
             }
 
             filterThoughts() {
@@ -375,13 +518,13 @@
                     document.getElementById('thoughtForm').classList.add('active');
                 });
 
-                document.getElementById('saveThought').addEventListener('click', () => {
+                document.getElementById('saveThought').addEventListener('click', async () => {
                     const content = document.getElementById('thoughtInput').value;
                     const tags = Array.from(document.querySelectorAll('.tag'))
                         .map(tag => tag.textContent.trim());
                     
                     if (content) {
-                        this.saveThought(content, tags);
+                        await this.saveThought(content, tags);
                         this.clearForm();
                     }
                 });
@@ -401,16 +544,20 @@
                     }
                 });
 
-                document.getElementById('unlockBtn').addEventListener('click', () => {
+                document.getElementById('unlockBtn').addEventListener('click', async () => {
                     const input = document.getElementById('passwordInput').value;
-                    if (this.verifyPassword(input)) {
+                    try {
+                        const encryptedData = localStorage.getItem('encryptedVault');
+                        const decrypted = await CryptoLayer.decrypt(encryptedData, input);
+                        this.thoughts = JSON.parse(decrypted);
+                        this.password = input;
                         document.getElementById('authModal').style.display = 'none';
-                    } else {
-                        alert('Invalid password!');
+                        this.renderThoughts();
+                    } catch (error) {
+                        alert('Invalid password or corrupted data!');
                     }
                 });
 
-                // Search functionality
                 document.getElementById('searchInput').addEventListener('input', () => {
                     this.renderThoughts();
                 });
@@ -443,7 +590,6 @@
             }
         }
 
-        // Initialize Pandora Vault
         const pandora = new PandoraVault();
     </script>
 </body>
