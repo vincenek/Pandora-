@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pandora - Instant Lock Journal</title>
+    <title>Pandora - Thought Vault</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -35,7 +35,6 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 2rem 1rem;
-            display: none;
         }
 
         .header {
@@ -120,6 +119,11 @@
             position: relative;
         }
 
+        .thought-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
         .auth-modal {
             position: fixed;
             top: 0;
@@ -127,7 +131,7 @@
             width: 100%;
             height: 100%;
             background: rgba(0,0,0,0.95);
-            display: flex;
+            display: none;
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -143,218 +147,450 @@
             text-align: center;
         }
 
+        #searchInput {
+            width: 100%;
+            padding: 1rem;
+            font-size: 1.1rem;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            transition: all 0.2s ease;
+        }
+
+        #searchInput:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(138,43,226,0.2);
+            outline: none;
+        }
+
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 1.5rem;
+                text-align: center;
+            }
+
+            .thought-form {
+                padding: 1.5rem;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container" id="mainContainer">
+    <div class="container">
         <header class="header">
-            <h1>🔒 Pandora</h1>
-            <button class="btn btn-primary" id="newEntryBtn">
-                New Entry
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 5v14M5 12h14"/>
-                </svg>
-            </button>
+            <h1>📦 Pandora</h1>
+            <div class="toolbar">
+                <button class="btn btn-primary" id="newThoughtBtn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12h14"/>
+                    </svg>
+                    New Thought
+                </button>
+            </div>
         </header>
 
         <main>
-            <form class="thought-form" id="entryForm">
-                <textarea 
-                    id="entryContent" 
-                    placeholder="Write your private thoughts..."
-                    rows="5"
-                    autocomplete="off"
-                    required
-                ></textarea>
-                <div class="tag-container" id="tagContainer"></div>
-                <div style="margin-top: 1rem; display: flex; gap: 1rem;">
-                    <button type="submit" class="btn btn-primary">Save</button>
-                    <button type="button" class="btn" onclick="JournalUI.closeForm()">Cancel</button>
+            <form class="thought-form" id="thoughtForm">
+                <div class="form-group">
+                    <textarea 
+                        id="thoughtInput" 
+                        placeholder="Your deepest thought..." 
+                        rows="5"
+                        required
+                    ></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <input 
+                        type="text" 
+                        id="tagInput" 
+                        placeholder="Add tags (press Enter)"
+                        class="tag-input"
+                    >
+                    <div class="tag-container" id="tagContainer"></div>
+                </div>
+
+                <div class="form-group" style="display: flex; gap: 1rem;">
+                    <button type="button" class="btn btn-primary" id="saveThought">
+                        Save Thought
+                    </button>
+                    <button type="button" class="btn" id="cancelThought" style="background: var(--bg-primary);">
+                        Cancel
+                    </button>
                 </div>
             </form>
 
-            <div class="thought-grid" id="entriesGrid"></div>
+            <div class="filters">
+                <input 
+                    type="text" 
+                    id="searchInput" 
+                    placeholder="🔍 Search thoughts..."
+                >
+                <select id="tagFilter" class="tag-filter">
+                    <option value="">All Tags</option>
+                </select>
+            </div>
+
+            <div class="thought-grid" id="thoughtGrid"></div>
         </main>
     </div>
 
     <div class="auth-modal" id="authModal">
         <div class="auth-content">
-            <h2>Unlock Pandora</h2>
+            <h2>🔒 Unlock Pandora</h2>
             <input 
                 type="password" 
-                id="authPassword" 
-                placeholder="Enter your passphrase"
-                autocomplete="current-password"
-                style="width: 100%; padding: 1rem; margin: 1rem 0; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary);"
+                id="passwordInput" 
+                placeholder="Enter your secret phrase"
+                class="auth-input"
             >
-            <button class="btn btn-primary" onclick="JournalAuth.unlock()">Unlock</button>
-            <p id="authMessage" style="margin-top: 1rem; color: var(--error);"></p>
+            <div class="toolbar" style="margin-top: 1.5rem; gap: 1rem;">
+                <button class="btn btn-primary" id="unlockBtn">
+                    Unlock Vault
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
-        class QuantumLock {
-            static async generateKeys(password) {
-                const salt = crypto.getRandomValues(new Uint8Array(32));
+        const CryptoLayer = {
+            async encrypt(plaintext, password) {
+                const salt = crypto.getRandomValues(new Uint8Array(16));
+                const iv = crypto.getRandomValues(new Uint8Array(16));
+                
                 const keyMaterial = await crypto.subtle.importKey(
                     'raw',
                     new TextEncoder().encode(password),
                     'PBKDF2',
                     false,
-                    ['deriveKey']
+                    ['deriveBits']
                 );
 
-                return crypto.subtle.deriveKey(
-                    {
-                        name: 'PBKDF2',
-                        salt,
-                        iterations: 100000,
-                        hash: 'SHA-256'
-                    },
-                    keyMaterial,
-                    { name: 'AES-GCM', length: 256 },
-                    true,
-                    ['encrypt', 'decrypt']
-                );
-            }
+                const rawKey = await crypto.subtle.deriveBits({
+                    name: 'PBKDF2',
+                    salt: salt,
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                }, keyMaterial, 512);
 
-            static async encryptData(key, data) {
-                const iv = crypto.getRandomValues(new Uint8Array(12));
-                const encoded = new TextEncoder().encode(JSON.stringify(data));
-                const ciphertext = await crypto.subtle.encrypt(
-                    { name: 'AES-GCM', iv },
-                    key,
-                    encoded
+                const keyBytes = new Uint8Array(rawKey);
+                const aesKey = await crypto.subtle.importKey(
+                    'raw',
+                    keyBytes.slice(0, 32),
+                    'AES-CBC',
+                    false,
+                    ['encrypt']
                 );
-                return { iv: Array.from(iv), data: Array.from(new Uint8Array(ciphertext)) };
-            }
 
-            static async decryptData(key, encrypted) {
+                const encrypted = await crypto.subtle.encrypt(
+                    { name: 'AES-CBC', iv: iv },
+                    aesKey,
+                    new TextEncoder().encode(plaintext)
+                );
+
+                const xorCipher = this.xorBytes(new Uint8Array(encrypted), keyBytes.slice(32));
+                const combined = new Uint8Array([...salt, ...iv, ...xorCipher]);
+                return this.addDummies(this.arrayBufferToBase64(combined));
+            },
+
+            async decrypt(ciphertext, password) {
+                const cleanBase64 = this.removeDummies(ciphertext);
+                const combined = this.base64ToArrayBuffer(cleanBase64);
+                
+                const salt = combined.slice(0, 16);
+                const iv = combined.slice(16, 32);
+                const xorCipher = new Uint8Array(combined.slice(32));
+
+                const keyMaterial = await crypto.subtle.importKey(
+                    'raw',
+                    new TextEncoder().encode(password),
+                    'PBKDF2',
+                    false,
+                    ['deriveBits']
+                );
+
+                const rawKey = await crypto.subtle.deriveBits({
+                    name: 'PBKDF2',
+                    salt: salt,
+                    iterations: 100000,
+                    hash: 'SHA-256'
+                }, keyMaterial, 512);
+
+                const keyBytes = new Uint8Array(rawKey);
+                const aesKey = await crypto.subtle.importKey(
+                    'raw',
+                    keyBytes.slice(0, 32),
+                    'AES-CBC',
+                    false,
+                    ['decrypt']
+                );
+
+                const aesData = this.xorBytes(xorCipher, keyBytes.slice(32));
                 const decrypted = await crypto.subtle.decrypt(
-                    { name: 'AES-GCM', iv: new Uint8Array(encrypted.iv) },
-                    key,
-                    new Uint8Array(encrypted.data)
+                    { name: 'AES-CBC', iv: iv },
+                    aesKey,
+                    aesData
                 );
-                return JSON.parse(new TextDecoder().decode(decrypted));
+
+                return new TextDecoder().decode(decrypted);
+            },
+
+            xorBytes(data, key) {
+                return data.map((byte, i) => byte ^ key[i % key.length]);
+            },
+
+            addDummies(str) {
+                return str.match(/.{1,4}/g)?.map(chunk => 
+                    chunk + this.randomChar() + this.randomChar()
+                ).join('') || '';
+            },
+
+            removeDummies(str) {
+                return str.match(/.{1,6}/g)?.map(chunk => 
+                    chunk.substring(0,4)
+                ).join('') || '';
+            },
+
+            randomChar() {
+                return 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'[
+                    Math.floor(Math.random() * 64)
+                ];
+            },
+
+            arrayBufferToBase64(buffer) {
+                return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+            },
+
+            base64ToArrayBuffer(base64) {
+                return Uint8Array.from(atob(base64), c => c.charCodeAt(0)).buffer;
             }
-        }
+        };
 
-        class JournalAuth {
-            static sessionKey = null;
-
-            static async initialize() {
-                window.addEventListener('blur', () => this.lockSession());
-                window.addEventListener('beforeunload', () => this.lockSession());
-                
-                const existing = localStorage.getItem('journalV3') || 
-                              localStorage.getItem('journalV2') || 
-                              localStorage.getItem('quantumVault');
-                
-                if (!existing) await this.createNewVault();
-                else document.getElementById('authModal').style.display = 'flex';
+        class PandoraVault {
+            constructor() {
+                this.thoughts = [];
+                this.password = null;
+                this.initialize();
+                this.checkAuth();
             }
 
-            static async createNewVault() {
-                const password = prompt('Create your passphrase:');
-                if (!password) return;
+            async checkAuth() {
+                const encryptedVault = localStorage.getItem('encryptedVault');
+                const legacyData = localStorage.getItem('pandoraVault');
                 
-                this.sessionKey = await QuantumLock.generateKeys(password);
-                localStorage.setItem('journalV3', JSON.stringify({
-                    entries: [],
-                    salt: Array.from(crypto.getRandomValues(new Uint8Array(32)))
-                }));
-                this.showInterface();
-            }
-
-            static async unlock() {
-                const password = document.getElementById('authPassword').value;
-                try {
-                    const vault = JSON.parse(localStorage.getItem('journalV3'));
-                    this.sessionKey = await QuantumLock.generateKeys(password);
-                    this.showInterface();
-                } catch (e) {
-                    document.getElementById('authMessage').textContent = 'Invalid passphrase';
+                if (encryptedVault) {
+                    this.showAuthModal();
+                } else if (legacyData) {
+                    this.migrateLegacyData(legacyData);
+                } else {
+                    this.setPassword();
                 }
             }
 
-            static lockSession() {
-                this.sessionKey = null;
-                document.getElementById('mainContainer').style.display = 'none';
+            async migrateLegacyData(legacyData) {
+                const password = prompt('Set a password to encrypt your existing data:');
+                if (!password) return;
+
+                try {
+                    const encrypted = await CryptoLayer.encrypt(legacyData, password);
+                    localStorage.setItem('encryptedVault', encrypted);
+                    localStorage.removeItem('pandoraVault');
+                    this.thoughts = JSON.parse(legacyData);
+                    this.password = password;
+                    this.renderThoughts();
+                } catch (error) {
+                    alert('Failed to migrate data. Please refresh and try again.');
+                }
+            }
+
+            initialize() {
+                this.setupEventListeners();
+                this.updateTagFilter();
+            }
+
+            async setPassword() {
+                const password = prompt('Set your vault password:');
+                if (!password) return;
+
+                try {
+                    this.password = password;
+                    await this.persistData();
+                } catch (error) {
+                    alert('Failed to initialize vault. Please try again.');
+                }
+            }
+
+            showAuthModal() {
                 document.getElementById('authModal').style.display = 'flex';
             }
 
-            static showInterface() {
-                document.getElementById('authModal').style.display = 'none';
-                document.getElementById('mainContainer').style.display = 'block';
-                JournalUI.loadEntries();
+            async saveThought(content, tags) {
+                const thought = {
+                    id: Date.now(),
+                    content,
+                    tags,
+                    created: new Date().toISOString(),
+                    linked: []
+                };
+
+                this.thoughts.unshift(thought);
+                await this.persistData();
+                this.renderThoughts();
+                this.updateTagFilter();
             }
-        }
 
-        class JournalUI {
-            static async loadEntries() {
-                const vault = JSON.parse(localStorage.getItem('journalV3'));
-                const grid = document.getElementById('entriesGrid');
-                grid.innerHTML = '';
-
-                for (const entry of vault.entries) {
-                    const decrypted = await QuantumLock.decryptData(JournalAuth.sessionKey, entry);
-                    grid.innerHTML += `
-                        <div class="thought-card">
-                            <div style="color: var(--text-secondary); font-size: 0.9em;">
-                                ${new Date(decrypted.timestamp).toLocaleString()}
-                            </div>
-                            <div style="margin: 1rem 0;">${decrypted.content}</div>
-                            ${decrypted.tags.map(t => `<span class="tag">${t}</span>`).join('')}
-                        </div>
-                    `;
+            async persistData() {
+                if (!this.password) return;
+                
+                try {
+                    const encrypted = await CryptoLayer.encrypt(
+                        JSON.stringify(this.thoughts),
+                        this.password
+                    );
+                    localStorage.setItem('encryptedVault', encrypted);
+                } catch (error) {
+                    alert('Failed to save data. Please check your connection.');
                 }
             }
 
-            static async saveEntry(content, tags) {
-                const entry = {
-                    timestamp: Date.now(),
-                    content,
-                    tags,
-                    encrypted: await QuantumLock.encryptData(
-                        JournalAuth.sessionKey, 
-                        { timestamp: Date.now(), content, tags }
-                    )
-                };
+            filterThoughts() {
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                const selectedTag = document.getElementById('tagFilter').value;
 
-                const vault = JSON.parse(localStorage.getItem('journalV3'));
-                vault.entries.unshift(entry);
-                localStorage.setItem('journalV3', JSON.stringify(vault));
-                this.loadEntries();
+                return this.thoughts.filter(thought => {
+                    const matchesSearch = thought.content.toLowerCase().includes(searchTerm) ||
+                        thought.tags.some(tag => tag.toLowerCase().includes(searchTerm));
+                    
+                    const matchesTag = !selectedTag || thought.tags.includes(selectedTag);
+                    
+                    return matchesSearch && matchesTag;
+                });
             }
 
-            static openForm() {
-                document.getElementById('entryForm').style.display = 'block';
+            renderThoughts() {
+                const filteredThoughts = this.filterThoughts();
+                const grid = document.getElementById('thoughtGrid');
+                grid.innerHTML = filteredThoughts.map(thought => `
+                    <div class="thought-card">
+                        <div class="thought-date" style="color: var(--text-secondary); font-size: 0.9em;">
+                            ${new Date(thought.created).toLocaleDateString('en-US', {
+                                weekday: 'short',
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                            })}
+                        </div>
+                        <div class="thought-content" style="margin: 1rem 0;">
+                            ${thought.content}
+                        </div>
+                        <div class="thought-tags">
+                            ${thought.tags.map(tag => `
+                                <span class="tag">${tag}</span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
             }
 
-            static closeForm() {
-                document.getElementById('entryForm').style.display = 'none';
-                document.getElementById('entryContent').value = '';
+            updateTagFilter() {
+                const allTags = [...new Set(this.thoughts.flatMap(t => t.tags))];
+                const tagFilter = document.getElementById('tagFilter');
+                tagFilter.innerHTML = `<option value="">All Tags</option>${
+                    allTags.map(tag => `<option>${tag}</option>`).join('')
+                }`;
+            }
+
+            setupEventListeners() {
+                document.getElementById('newThoughtBtn').addEventListener('click', () => {
+                    document.getElementById('thoughtForm').classList.add('active');
+                });
+
+                document.getElementById('saveThought').addEventListener('click', async () => {
+                    const content = document.getElementById('thoughtInput').value;
+                    const tags = Array.from(document.querySelectorAll('.tag'))
+                        .map(tag => tag.textContent.trim());
+                    
+                    if (content) {
+                        await this.saveThought(content, tags);
+                        this.clearForm();
+                    }
+                });
+
+                document.getElementById('cancelThought').addEventListener('click', () => {
+                    this.clearForm();
+                });
+
+                document.getElementById('tagInput').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const tag = e.target.value.trim();
+                        if (tag) {
+                            this.addTag(tag);
+                            e.target.value = '';
+                        }
+                    }
+                });
+
+                document.getElementById('unlockBtn').addEventListener('click', async () => {
+                    const input = document.getElementById('passwordInput').value;
+                    try {
+                        const encryptedData = localStorage.getItem('encryptedVault');
+                        const decrypted = await CryptoLayer.decrypt(encryptedData, input);
+                        this.thoughts = JSON.parse(decrypted);
+                        this.password = input;
+                        document.getElementById('authModal').style.display = 'none';
+                        this.renderThoughts();
+                    } catch (error) {
+                        alert('Invalid password or corrupted data!');
+                    }
+                });
+
+                document.getElementById('searchInput').addEventListener('input', () => {
+                    this.renderThoughts();
+                });
+
+                document.getElementById('tagFilter').addEventListener('change', () => {
+                    this.renderThoughts();
+                });
+            }
+
+            addTag(tagText) {
+                const container = document.getElementById('tagContainer');
+                const tag = document.createElement('span');
+                tag.className = 'tag';
+                tag.textContent = `#${tagText.replace(/#/g, '')}`;
+                
+                const removeBtn = document.createElement('span');
+                removeBtn.textContent = '×';
+                removeBtn.style.cursor = 'pointer';
+                removeBtn.style.marginLeft = '6px';
+                removeBtn.onclick = () => tag.remove();
+                
+                tag.appendChild(removeBtn);
+                container.appendChild(tag);
+            }
+
+            clearForm() {
+                document.getElementById('thoughtForm').classList.remove('active');
+                document.getElementById('thoughtInput').value = '';
                 document.getElementById('tagContainer').innerHTML = '';
             }
         }
 
-        // Event Listeners
-        document.getElementById('newEntryBtn').addEventListener('click', JournalUI.openForm);
-        document.getElementById('entryForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const content = document.getElementById('entryContent').value;
-            const tags = Array.from(document.querySelectorAll('.tag'))
-                .map(t => t.textContent.trim());
-            await JournalUI.saveEntry(content, tags);
-            JournalUI.closeForm();
-        });
-
-        // Initialize
-        JournalAuth.initialize();
+        const pandora = new PandoraVault();
     </script>
 </body>
 </html>
