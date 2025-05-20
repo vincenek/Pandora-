@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pandora - Quantum Thought Vault</title>
+    <title>Pandora - Instant Lock Journal</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -35,6 +35,7 @@
             max-width: 1200px;
             margin: 0 auto;
             padding: 2rem 1rem;
+            display: none;
         }
 
         .header {
@@ -119,11 +120,6 @@
             position: relative;
         }
 
-        .thought-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-        }
-
         .auth-modal {
             position: fixed;
             top: 0;
@@ -131,7 +127,7 @@
             width: 100%;
             height: 100%;
             background: rgba(0,0,0,0.95);
-            display: none;
+            display: flex;
             justify-content: center;
             align-items: center;
             z-index: 1000;
@@ -147,410 +143,218 @@
             text-align: center;
         }
 
-        #searchInput {
-            width: 100%;
-            padding: 1rem;
-            font-size: 1.1rem;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            margin-bottom: 1.5rem;
-            transition: all 0.2s ease;
-        }
-
-        #searchInput:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(138,43,226,0.2);
-            outline: none;
-        }
-
         @keyframes slideIn {
             from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                gap: 1.5rem;
-                text-align: center;
-            }
-
-            .thought-form {
-                padding: 1.5rem;
-            }
-
-            .btn {
-                width: 100%;
-                justify-content: center;
-            }
-        }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" id="mainContainer">
         <header class="header">
-            <h1>📦 Pandora</h1>
-            <div class="toolbar">
-                <button class="btn btn-primary" id="newThoughtBtn">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 5v14M5 12h14"/>
-                    </svg>
-                    New Thought
-                </button>
-            </div>
+            <h1>🔒 Pandora</h1>
+            <button class="btn btn-primary" id="newEntryBtn">
+                New Entry
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+            </button>
         </header>
 
         <main>
-            <form class="thought-form" id="thoughtForm">
-                <div class="form-group">
-                    <textarea 
-                        id="thoughtInput" 
-                        placeholder="Your deepest thought..." 
-                        rows="5"
-                        required
-                    ></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <input 
-                        type="text" 
-                        id="tagInput" 
-                        placeholder="Add tags (press Enter)"
-                        class="tag-input"
-                    >
-                    <div class="tag-container" id="tagContainer"></div>
-                </div>
-
-                <div class="form-group" style="display: flex; gap: 1rem;">
-                    <button type="button" class="btn btn-primary" id="saveThought">
-                        Save Thought
-                    </button>
-                    <button type="button" class="btn" id="cancelThought" style="background: var(--bg-primary);">
-                        Cancel
-                    </button>
+            <form class="thought-form" id="entryForm">
+                <textarea 
+                    id="entryContent" 
+                    placeholder="Write your private thoughts..."
+                    rows="5"
+                    autocomplete="off"
+                    required
+                ></textarea>
+                <div class="tag-container" id="tagContainer"></div>
+                <div style="margin-top: 1rem; display: flex; gap: 1rem;">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn" onclick="JournalUI.closeForm()">Cancel</button>
                 </div>
             </form>
 
-            <div class="filters">
-                <input 
-                    type="text" 
-                    id="searchInput" 
-                    placeholder="🔍 Search thoughts..."
-                >
-                <select id="tagFilter" class="tag-filter">
-                    <option value="">All Tags</option>
-                </select>
-            </div>
-
-            <div class="thought-grid" id="thoughtGrid"></div>
+            <div class="thought-grid" id="entriesGrid"></div>
         </main>
     </div>
 
     <div class="auth-modal" id="authModal">
         <div class="auth-content">
-            <h2>🔒 Quantum Unlock</h2>
+            <h2>Unlock Pandora</h2>
             <input 
                 type="password" 
-                id="passwordInput" 
-                placeholder="Enter your quantum passphrase"
-                class="auth-input"
+                id="authPassword" 
+                placeholder="Enter your passphrase"
+                autocomplete="current-password"
+                style="width: 100%; padding: 1rem; margin: 1rem 0; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-primary); color: var(--text-primary);"
             >
-            <div class="toolbar" style="margin-top: 1.5rem; gap: 1rem;">
-                <button class="btn btn-primary" id="unlockBtn">
-                    Unlock Vault
-                </button>
-            </div>
+            <button class="btn btn-primary" onclick="JournalAuth.unlock()">Unlock</button>
+            <p id="authMessage" style="margin-top: 1rem; color: var(--error);"></p>
         </div>
     </div>
 
     <script>
-        class QuantumFortress {
-            static async createVault(password) {
-                const cryptoVault = {
-                    argonConfig: {
-                        time: 8,
-                        mem: 2**24,
-                        parallelism: 4,
-                        hashLen: 128,
-                        type: 'argon2id'
-                    },
-                    hmacSecret: crypto.getRandomValues(new Uint8Array(128)),
-                    pqKeys: await this.generatePQKeys(),
-                    deviceKey: await this.createDeviceLock()
-                };
-
-                const rootKey = await this.deriveMasterKey(password, cryptoVault);
-                return { cryptoVault, rootKey };
-            }
-
-            static async generatePQKeys() {
-                const [kyber, dilithium] = await Promise.all([
-                    crypto.subtle.generateKey({ name: "KYBER_1024" }, true, ["encapsulate", "decapsulate"]),
-                    crypto.subtle.generateKey({ name: "DILITHIUM5" }, true, ["sign", "verify"])
-                ]);
-                return { kyber, dilithium };
-            }
-
-            static async createDeviceLock() {
-                const cred = await navigator.credentials.create({
-                    publicKey: {
-                        challenge: crypto.getRandomValues(new Uint8Array(32)),
-                        rp: { name: "QuantumJournal" },
-                        user: { id: crypto.getRandomValues(new Uint8Array(16)), name: "user", displayName: "User" },
-                        pubKeyCredParams: [
-                            { type: "public-key", alg: -8 },
-                            { type: "public-key", alg: -258 }
-                        ],
-                        authenticatorSelection: {
-                            requireResidentKey: true,
-                            userVerification: "required"
-                        }
-                    }
-                });
-                return cred.rawId;
-            }
-
-            static async deriveMasterKey(password, cryptoVault) {
-                const argonKey = await argon2.hash({
-                    pass: password,
-                    salt: cryptoVault.hmacSecret.slice(0, 32),
-                    ...cryptoVault.argonConfig
-                });
-
-                const hkdfKey = await crypto.subtle.importKey(
-                    "raw",
-                    argonKey.hash,
-                    { name: "HKDF" },
+        class QuantumLock {
+            static async generateKeys(password) {
+                const salt = crypto.getRandomValues(new Uint8Array(32));
+                const keyMaterial = await crypto.subtle.importKey(
+                    'raw',
+                    new TextEncoder().encode(password),
+                    'PBKDF2',
                     false,
-                    ["deriveKey"]
+                    ['deriveKey']
                 );
 
                 return crypto.subtle.deriveKey(
                     {
-                        name: "HKDF",
-                        salt: cryptoVault.hmacSecret.slice(32, 64),
-                        info: new TextEncoder().encode("QuantumJournalRootKey"),
-                        hash: "SHA-512"
+                        name: 'PBKDF2',
+                        salt,
+                        iterations: 100000,
+                        hash: 'SHA-256'
                     },
-                    hkdfKey,
-                    { name: "AES-KW", length: 512 },
-                    false,
-                    ["wrapKey", "unwrapKey"]
-                );
-            }
-
-            static async encryptEntry(rootKey, plaintext) {
-                const sessionKey = crypto.getRandomValues(new Uint8Array(64));
-                const sealedKey = await this.wrapKey(rootKey, sessionKey);
-                
-                const [ct1, ct2, ct3] = await Promise.all([
-                    this.xorChainEncrypt(plaintext, sessionKey.slice(0, 32)),
-                    this.matrixTransformEncrypt(plaintext, sessionKey.slice(32)),
-                    this.pqEncrypt(plaintext)
-                ]);
-
-                return this.encodeNuclearPayload({
-                    sealedKey,
-                    ciphertexts: [ct1, ct2, ct3],
-                    proof: await this.createSecurityProof(ct1, ct2, ct3)
-                });
-            }
-
-            static async xorChainEncrypt(data, key) {
-                let ciphertext = new Uint8Array(data);
-                for (let i = 0; i < 128; i++) {
-                    ciphertext = ciphertext.map((b, idx) => b ^ key[idx % 32] ^ i);
-                    key = await crypto.subtle.digest('SHA3-512', key);
-                }
-                return ciphertext;
-            }
-
-            static async pqEncrypt(plaintext) {
-                const alg = { 
-                    name: "KYBER_1024",
-                    encodedMethod: "FIPS203_IPD"
-                };
-                const publicKey = await crypto.subtle.importKey(
-                    "raw",
-                    pqKeys.kyber.publicKey,
-                    alg,
+                    keyMaterial,
+                    { name: 'AES-GCM', length: 256 },
                     true,
-                    ["encapsulate"]
+                    ['encrypt', 'decrypt']
                 );
-                
-                const { ciphertext, sharedSecret } = await crypto.subtle.encapsulate(alg, publicKey);
-                const aesKey = await crypto.subtle.importKey("raw", sharedSecret.slice(0, 32), "AES-GCM", false, ["encrypt"]);
-                
-                const encrypted = await crypto.subtle.encrypt(
-                    { name: "AES-GCM", iv: new Uint8Array(12) },
-                    aesKey,
-                    new TextEncoder().encode(plaintext)
-                );
-
-                return { ciphertext, encrypted };
             }
 
-            static encodeNuclearPayload(data) {
-                const json = JSON.stringify(data);
-                const encoded = new TextEncoder().encode(json);
-                const obfuscated = new Uint8Array(encoded.length * 2 + 1024);
-                
-                crypto.getRandomValues(obfuscated);
-                obfuscated.set(encoded, 512);
-                obfuscated.reverse();
-                
-                return btoa(String.fromCharCode(...obfuscated));
+            static async encryptData(key, data) {
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const encoded = new TextEncoder().encode(JSON.stringify(data));
+                const ciphertext = await crypto.subtle.encrypt(
+                    { name: 'AES-GCM', iv },
+                    key,
+                    encoded
+                );
+                return { iv: Array.from(iv), data: Array.from(new Uint8Array(ciphertext)) };
             }
 
-            static async decryptEntry(rootKey, encryptedData) {
-                const decoded = this.decodeNuclearPayload(encryptedData);
-                const sessionKey = await this.unwrapKey(rootKey, decoded.sealedKey);
-                
-                const decrypted = await Promise.all([
-                    this.xorChainDecrypt(decoded.ciphertexts[0], sessionKey.slice(0, 32)),
-                    this.matrixTransformDecrypt(decoded.ciphertexts[1], sessionKey.slice(32)),
-                    this.pqDecrypt(decoded.ciphertexts[2])
-                ]);
-
-                return this.mergeDecryptedData(decrypted, decoded.proof);
+            static async decryptData(key, encrypted) {
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: 'AES-GCM', iv: new Uint8Array(encrypted.iv) },
+                    key,
+                    new Uint8Array(encrypted.data)
+                );
+                return JSON.parse(new TextDecoder().decode(decrypted));
             }
         }
 
-        class HyperJournal {
-            constructor() {
-                this.vault = null;
-                this.session = null;
-                this.thoughts = [];
-                this.initialize();
+        class JournalAuth {
+            static sessionKey = null;
+
+            static async initialize() {
+                window.addEventListener('blur', () => this.lockSession());
+                window.addEventListener('beforeunload', () => this.lockSession());
+                
+                const existing = localStorage.getItem('journalV3') || 
+                              localStorage.getItem('journalV2') || 
+                              localStorage.getItem('quantumVault');
+                
+                if (!existing) await this.createNewVault();
+                else document.getElementById('authModal').style.display = 'flex';
             }
 
-            async initialize() {
-                await this.loadQuantumVault();
-                this.setupEventListeners();
-                this.checkAuth();
+            static async createNewVault() {
+                const password = prompt('Create your passphrase:');
+                if (!password) return;
+                
+                this.sessionKey = await QuantumLock.generateKeys(password);
+                localStorage.setItem('journalV3', JSON.stringify({
+                    entries: [],
+                    salt: Array.from(crypto.getRandomValues(new Uint8Array(32)))
+                }));
+                this.showInterface();
             }
 
-            async loadQuantumVault() {
-                const vaultData = localStorage.getItem('quantumVault');
-                const legacyData = localStorage.getItem('encryptedVault');
-
-                if (vaultData) {
-                    await this.unlockVault();
-                } else if (legacyData) {
-                    await this.migrateLegacyData(legacyData);
-                } else {
-                    await this.createVault();
+            static async unlock() {
+                const password = document.getElementById('authPassword').value;
+                try {
+                    const vault = JSON.parse(localStorage.getItem('journalV3'));
+                    this.sessionKey = await QuantumLock.generateKeys(password);
+                    this.showInterface();
+                } catch (e) {
+                    document.getElementById('authMessage').textContent = 'Invalid passphrase';
                 }
             }
 
-            async createVault() {
-                const password = this.getPassword(32);
-                const { cryptoVault, rootKey } = await QuantumFortress.createVault(password);
-                
-                this.vault = {
-                    config: cryptoVault,
-                    entries: [],
-                    keyCache: new Map()
-                };
-
-                this.session = {
-                    rootKey,
-                    deviceLock: await QuantumFortress.createDeviceLock(),
-                    ephemeralKey: crypto.getRandomValues(new Uint8Array(1024))
-                };
-
-                localStorage.setItem('quantumVault', JSON.stringify(this.vault));
+            static lockSession() {
+                this.sessionKey = null;
+                document.getElementById('mainContainer').style.display = 'none';
+                document.getElementById('authModal').style.display = 'flex';
             }
 
-            async saveThought(content, tags) {
-                const encryptedEntry = await QuantumFortress.encryptEntry(
-                    this.session.rootKey,
-                    JSON.stringify({ content, tags })
-                );
-
-                this.vault.entries.unshift({
-                    id: crypto.randomUUID(),
-                    timestamp: Date.now(),
-                    ciphertext: encryptedEntry
-                });
-
-                await this.persistVault();
-                this.renderThoughts();
+            static showInterface() {
+                document.getElementById('authModal').style.display = 'none';
+                document.getElementById('mainContainer').style.display = 'block';
+                JournalUI.loadEntries();
             }
+        }
 
-            async persistVault() {
-                const encryptedVault = await QuantumFortress.encryptEntry(
-                    this.session.rootKey,
-                    JSON.stringify(this.vault)
-                );
-                
-                localStorage.setItem('quantumVault', encryptedVault);
-            }
+        class JournalUI {
+            static async loadEntries() {
+                const vault = JSON.parse(localStorage.getItem('journalV3'));
+                const grid = document.getElementById('entriesGrid');
+                grid.innerHTML = '';
 
-            async renderThoughts() {
-                const filteredThoughts = this.filterThoughts();
-                const grid = document.getElementById('thoughtGrid');
-                grid.innerHTML = await Promise.all(filteredThoughts.map(async entry => {
-                    const decrypted = await QuantumFortress.decryptEntry(
-                        this.session.rootKey,
-                        entry.ciphertext
-                    );
-                    const { content, tags } = JSON.parse(decrypted);
-                    
-                    return `
+                for (const entry of vault.entries) {
+                    const decrypted = await QuantumLock.decryptData(JournalAuth.sessionKey, entry);
+                    grid.innerHTML += `
                         <div class="thought-card">
-                            <div class="thought-date">
-                                ${new Date(entry.timestamp).toLocaleDateString()}
+                            <div style="color: var(--text-secondary); font-size: 0.9em;">
+                                ${new Date(decrypted.timestamp).toLocaleString()}
                             </div>
-                            <div class="thought-content">
-                                ${content}
-                            </div>
-                            <div class="thought-tags">
-                                ${tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
-                            </div>
+                            <div style="margin: 1rem 0;">${decrypted.content}</div>
+                            ${decrypted.tags.map(t => `<span class="tag">${t}</span>`).join('')}
                         </div>
                     `;
-                }));
+                }
             }
 
-            setupEventListeners() {
-                document.getElementById('newThoughtBtn').addEventListener('click', () => {
-                    document.getElementById('thoughtForm').classList.add('active');
-                });
+            static async saveEntry(content, tags) {
+                const entry = {
+                    timestamp: Date.now(),
+                    content,
+                    tags,
+                    encrypted: await QuantumLock.encryptData(
+                        JournalAuth.sessionKey, 
+                        { timestamp: Date.now(), content, tags }
+                    )
+                };
 
-                document.getElementById('saveThought').addEventListener('click', async () => {
-                    const content = document.getElementById('thoughtInput').value;
-                    const tags = Array.from(document.querySelectorAll('.tag'))
-                        .map(tag => tag.textContent.trim());
-                    
-                    if (content) {
-                        await this.saveThought(content, tags);
-                        this.clearForm();
-                    }
-                });
-
-                document.getElementById('unlockBtn').addEventListener('click', async () => {
-                    const password = document.getElementById('passwordInput').value;
-                    try {
-                        await this.unlockVault(password);
-                        document.getElementById('authModal').style.display = 'none';
-                        this.renderThoughts();
-                    } catch (error) {
-                        alert('Quantum authentication failed!');
-                    }
-                });
-
-                document.getElementById('searchInput').addEventListener('input', () => {
-                    this.renderThoughts();
-                });
+                const vault = JSON.parse(localStorage.getItem('journalV3'));
+                vault.entries.unshift(entry);
+                localStorage.setItem('journalV3', JSON.stringify(vault));
+                this.loadEntries();
             }
 
-            // ... Additional methods preserved from both originals
+            static openForm() {
+                document.getElementById('entryForm').style.display = 'block';
+            }
+
+            static closeForm() {
+                document.getElementById('entryForm').style.display = 'none';
+                document.getElementById('entryContent').value = '';
+                document.getElementById('tagContainer').innerHTML = '';
+            }
         }
 
-        const quantumJournal = new HyperJournal();
+        // Event Listeners
+        document.getElementById('newEntryBtn').addEventListener('click', JournalUI.openForm);
+        document.getElementById('entryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const content = document.getElementById('entryContent').value;
+            const tags = Array.from(document.querySelectorAll('.tag'))
+                .map(t => t.textContent.trim());
+            await JournalUI.saveEntry(content, tags);
+            JournalUI.closeForm();
+        });
+
+        // Initialize
+        JournalAuth.initialize();
     </script>
 </body>
 </html>
