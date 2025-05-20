@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pandora - Quantum Journal</title>
+    <title>Pandora - Ultra Secure Journal</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
+        /* Your original CSS preserved */
         :root {
             --bg-primary: #0a0a0a;
             --bg-secondary: #1a1a1a;
@@ -268,8 +269,8 @@
     </div>
 
     <script>
-        const QuantumFortress = {
-            async encryptData(plaintext, password) {
+        class QuantumVault {
+            static async encrypt(plaintext, password) {
                 const salt = crypto.getRandomValues(new Uint8Array(32));
                 const iv = crypto.getRandomValues(new Uint8Array(16));
                 const kdf = await crypto.subtle.importKey(
@@ -306,9 +307,9 @@
                 const hmac = await crypto.subtle.sign('HMAC', hmacKey, encrypted);
                 const fullPackage = new Uint8Array([...salt, ...iv, ...new Uint8Array(encrypted), ...new Uint8Array(hmac)]);
                 return this.obfuscate(fullPackage);
-            },
+            }
 
-            async decryptData(ciphertext, password) {
+            static async decrypt(ciphertext, password) {
                 const rawData = this.deobfuscate(ciphertext);
                 const salt = rawData.slice(0, 32);
                 const iv = rawData.slice(32, 48);
@@ -350,27 +351,27 @@
                 );
 
                 return new TextDecoder().decode(decrypted);
-            },
+            }
 
-            obfuscate(buffer) {
+            static obfuscate(buffer) {
                 const obfuscated = new Uint8Array(buffer.length + 1024);
                 crypto.getRandomValues(obfuscated);
                 obfuscated.set(buffer, 512);
                 return obfuscated;
-            },
+            }
 
-            deobfuscate(data) {
+            static deobfuscate(data) {
                 return data.slice(512, 512 + (data.length - 1024));
-            },
+            }
 
-            constantTimeCompare(a, b) {
+            static constantTimeCompare(a, b) {
                 const aArr = new Uint8Array(a);
                 const bArr = new Uint8Array(b);
                 let diff = 0;
                 for (let i = 0; i < aArr.length; i++) diff |= aArr[i] ^ bArr[i];
                 return diff === 0;
             }
-        };
+        }
 
         class PandoraVault {
             constructor() {
@@ -381,37 +382,59 @@
 
             async initialize() {
                 this.setupEventListeners();
-                await this.loadVault();
+                await this.checkExistingData();
             }
 
-            async loadVault() {
-                const quantumVault = localStorage.getItem('quantumVault');
-                const legacyVault = localStorage.getItem('encryptedVault');
+            async checkExistingData() {
+                const existingData = [
+                    localStorage.getItem('quantumVault'),
+                    localStorage.getItem('encryptedVault'),
+                    localStorage.getItem('pandoraVault')
+                ].find(data => data);
 
-                if (quantumVault) {
-                    this.showAuthModal();
-                } else if (legacyVault) {
-                    await this.migrateLegacyData(legacyVault);
-                } else {
-                    this.showAuthModal();
+                if (!existingData) {
+                    await this.createNewVault();
+                    return;
                 }
-            }
 
-            async migrateLegacyData(legacyData) {
-                const password = prompt('Enter old password to upgrade security:');
                 try {
-                    const decrypted = await QuantumFortress.decryptData(legacyData, password);
-                    this.thoughts = JSON.parse(decrypted);
-                    const newPassword = prompt('Set quantum-secured password (min 16 chars):');
-                    await this.persistData(newPassword);
-                    localStorage.removeItem('encryptedVault');
-                    this.password = newPassword;
-                    this.renderThoughts();
+                    if (existingData.includes('nuclearVault')) {
+                        await this.migrateNuclearVault(existingData);
+                    } else if (existingData.includes('encryptedVault')) {
+                        await this.migrateEncryptedVault(existingData);
+                    } else {
+                        await this.migrateLegacyVault(existingData);
+                    }
+                    this.showAuthModal();
                 } catch (error) {
-                    alert('Migration failed!');
+                    console.error('Migration error:', error);
+                    alert('Data migration failed - using fresh vault');
                     localStorage.clear();
                     location.reload();
                 }
+            }
+
+            async migrateEncryptedVault(encryptedData) {
+                const password = prompt('Enter old password to migrate data:');
+                const decrypted = await QuantumVault.decrypt(encryptedData, password);
+                this.thoughts = JSON.parse(decrypted);
+                const newPassword = prompt('Set new quantum-secured password (min 16 chars):');
+                await this.persistData(newPassword);
+                localStorage.removeItem('encryptedVault');
+                this.password = newPassword;
+                this.renderThoughts();
+            }
+
+            async createNewVault() {
+                let password;
+                while (true) {
+                    password = prompt('Create ultra-secure passphrase (min 16 characters):');
+                    if (password && password.length >= 16) break;
+                    alert('Passphrase must be 16+ characters!');
+                }
+                this.password = password;
+                await this.persistData();
+                this.showAuthModal();
             }
 
             async saveThought(content, tags) {
@@ -430,17 +453,23 @@
             }
 
             async persistData(password = this.password) {
-                const encrypted = await QuantumFortress.encryptData(
-                    JSON.stringify(this.thoughts),
-                    password
-                );
-                localStorage.setItem('quantumVault', JSON.stringify(encrypted));
+                try {
+                    const encrypted = await QuantumVault.encrypt(
+                        JSON.stringify(this.thoughts),
+                        password
+                    );
+                    localStorage.setItem('quantumVault', JSON.stringify(encrypted));
+                } catch (error) {
+                    console.error('Persist error:', error);
+                    alert('Failed to save data!');
+                    throw error;
+                }
             }
 
             async unlockVault(password) {
                 try {
                     const encrypted = JSON.parse(localStorage.getItem('quantumVault'));
-                    const decrypted = await QuantumFortress.decryptData(encrypted, password);
+                    const decrypted = await QuantumVault.decrypt(encrypted, password);
                     this.thoughts = JSON.parse(decrypted);
                     this.password = password;
                     this.renderThoughts();
@@ -496,7 +525,7 @@
             }
 
             setupEventListeners() {
-                // Original event listeners preserved with quantum upgrades
+                // Original event listeners with enhanced error handling
                 document.getElementById('newThoughtBtn').addEventListener('click', () => {
                     document.getElementById('thoughtForm').classList.add('active');
                 });
@@ -507,25 +536,40 @@
                         .map(tag => tag.textContent.trim());
                     
                     if (content) {
-                        await this.saveThought(content, tags);
-                        this.clearForm();
+                        try {
+                            await this.saveThought(content, tags);
+                            this.clearForm();
+                        } catch (error) {
+                            alert('Error saving thought!');
+                        }
                     }
                 });
 
                 document.getElementById('unlockBtn').addEventListener('click', async () => {
                     const input = document.getElementById('passwordInput').value;
-                    if (await this.unlockVault(input)) {
-                        document.getElementById('authModal').style.display = 'none';
-                    } else {
-                        alert('INVALID PASSPHRASE - VAULT REMAINS LOCKED');
+                    try {
+                        if (await this.unlockVault(input)) {
+                            document.getElementById('authModal').style.display = 'none';
+                        } else {
+                            throw new Error('Invalid password');
+                        }
+                    } catch (error) {
+                        alert('DECRYPTION FAILED: Invalid password or corrupted data');
                         document.getElementById('passwordInput').value = '';
                     }
                 });
 
-                // Other event listeners remain unchanged
+                // Other preserved event listeners
                 document.getElementById('cancelThought').addEventListener('click', () => this.clearForm());
                 document.getElementById('tagInput').addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter') this.addTag(e.target.value.trim());
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const tag = e.target.value.trim();
+                        if (tag) {
+                            this.addTag(tag);
+                            e.target.value = '';
+                        }
+                    }
                 });
                 document.getElementById('searchInput').addEventListener('input', () => this.renderThoughts());
                 document.getElementById('tagFilter').addEventListener('change', () => this.renderThoughts());
@@ -558,7 +602,8 @@
             }
         }
 
-        const pandora = new PandoraVault();
+        // Initialize with data protection
+        const vault = new PandoraVault();
     </script>
 </body>
 </html>
