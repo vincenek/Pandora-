@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pandora - Ultra Secure Journal</title>
+    <title>Pandora - Secure Journal</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -292,7 +292,7 @@
 
             static async encryptData(key, data) {
                 const iv = crypto.getRandomValues(new Uint8Array(12));
-                const encoded = new TextEncoder().encode(data);
+                const encoded = new TextEncoder().encode(JSON.stringify(data));
                 const ciphertext = await crypto.subtle.encrypt(
                     { name: 'AES-GCM', iv },
                     key,
@@ -302,11 +302,12 @@
             }
 
             static async decryptData(key, encrypted) {
-                return crypto.subtle.decrypt(
+                const decrypted = await crypto.subtle.decrypt(
                     { name: 'AES-GCM', iv: new Uint8Array(encrypted.iv) },
                     key,
                     new Uint8Array(encrypted.data)
                 );
+                return JSON.parse(new TextDecoder().decode(decrypted));
             }
         }
 
@@ -316,6 +317,8 @@
                 this.sessionKey = null;
                 this.vaultSalt = null;
                 this.initializeSessionLocking();
+                this.initialize();
+                this.setupEventListeners();
             }
 
             initializeSessionLocking() {
@@ -350,14 +353,15 @@
                         password,
                         new Uint8Array(vault.salt)
                     );
-                    this.entries = await Promise.all(vault.entries.map(async entry => ({
-                        ...entry,
-                        decrypted: JSON.parse(
-                            new TextDecoder().decode(
-                                await SecurityEngine.decryptData(this.sessionKey, entry.encrypted)
-                            )
-                        )
-                    })));
+                    
+                    this.entries = await Promise.all(vault.entries.map(async entry => {
+                        const decrypted = await SecurityEngine.decryptData(this.sessionKey, entry.encrypted);
+                        return {
+                            encrypted: entry.encrypted,
+                            decrypted: JSON.parse(new TextDecoder().decode(decrypted))
+                        };
+                    }));
+                    
                     this.hideAuth();
                     this.renderEntries();
                 } catch (error) {
@@ -372,16 +376,20 @@
             }
 
             async saveEntry(content, tags) {
+                const timestamp = Date.now();
                 const encrypted = await SecurityEngine.encryptData(
                     this.sessionKey,
-                    JSON.stringify({ content, tags, timestamp: Date.now() })
+                    { content, tags, timestamp }
                 );
 
                 const vault = JSON.parse(localStorage.getItem('ultraVault'));
                 vault.entries.unshift({ encrypted });
                 localStorage.setItem('ultraVault', JSON.stringify(vault));
                 
-                this.entries.unshift({ encrypted, decrypted: { content, tags } });
+                this.entries.unshift({ 
+                    encrypted, 
+                    decrypted: { content, tags, timestamp } 
+                });
                 this.renderEntries();
             }
 
@@ -390,7 +398,13 @@
                 grid.innerHTML = this.entries.map(entry => `
                     <div class="thought-card">
                         <div class="thought-date" style="color: var(--text-secondary); font-size: 0.9em;">
-                            ${new Date(entry.decrypted.timestamp).toLocaleDateString()}
+                            ${new Date(entry.decrypted.timestamp).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}
                         </div>
                         <div class="thought-content" style="margin: 1rem 0;">
                             ${entry.decrypted.content}
@@ -438,7 +452,20 @@
                         e.preventDefault();
                         const tag = e.target.value.trim();
                         if (tag) this.addTag(tag);
+                        e.target.value = '';
                     }
+                });
+
+                document.getElementById('cancelThought').addEventListener('click', () => {
+                    this.clearForm();
+                });
+
+                document.getElementById('searchInput').addEventListener('input', () => {
+                    this.filterEntries();
+                });
+
+                document.getElementById('tagFilter').addEventListener('change', () => {
+                    this.filterEntries();
                 });
             }
 
@@ -447,7 +474,65 @@
                 const tag = document.createElement('span');
                 tag.className = 'tag';
                 tag.textContent = tagText.replace(/#/g, '');
+                
+                const removeBtn = document.createElement('span');
+                removeBtn.textContent = '×';
+                removeBtn.style.cursor = 'pointer';
+                removeBtn.style.marginLeft = '6px';
+                removeBtn.onclick = () => tag.remove();
+                
+                tag.appendChild(removeBtn);
                 container.appendChild(tag);
+            }
+
+            filterEntries() {
+                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+                const selectedTag = document.getElementById('tagFilter').value.toLowerCase();
+                
+                const filtered = this.entries.filter(entry => {
+                    const matchesSearch = entry.decrypted.content.toLowerCase().includes(searchTerm) ||
+                        entry.decrypted.tags.some(t => t.toLowerCase().includes(searchTerm));
+                    
+                    const matchesTag = !selectedTag || 
+                        entry.decrypted.tags.some(t => t.toLowerCase() === selectedTag);
+                    
+                    return matchesSearch && matchesTag;
+                });
+                
+                this.renderFilteredEntries(filtered);
+            }
+
+            renderFilteredEntries(filtered) {
+                const grid = document.getElementById('thoughtGrid');
+                grid.innerHTML = filtered.map(entry => `
+                    <div class="thought-card">
+                        <div class="thought-date" style="color: var(--text-secondary); font-size: 0.9em;">
+                            ${new Date(entry.decrypted.timestamp).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}
+                        </div>
+                        <div class="thought-content" style="margin: 1rem 0;">
+                            ${entry.decrypted.content}
+                        </div>
+                        <div class="thought-tags">
+                            ${entry.decrypted.tags.map(tag => `
+                                <span class="tag">${tag}</span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            updateTagFilter() {
+                const allTags = [...new Set(this.entries.flatMap(entry => entry.decrypted.tags))];
+                const tagFilter = document.getElementById('tagFilter');
+                tagFilter.innerHTML = `<option value="">All Tags</option>${
+                    allTags.map(tag => `<option>${tag}</option>`).join('')
+                }`;
             }
 
             clearForm() {
@@ -457,9 +542,7 @@
             }
         }
 
-        const vault = new UltraVault();
-        vault.initialize();
-        vault.setupEventListeners();
+        new UltraVault();
     </script>
 </body>
 </html>
