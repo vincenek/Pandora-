@@ -1,9 +1,9 @@
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pandora - Thought Vault</title>
+    <title>Pandora - Quantum Thought Vault</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -15,6 +15,7 @@
             --border: #333333;
             --success: #00cc88;
             --error: #ff4444;
+            --quantum-safe: #00ff88;
         }
 
         * {
@@ -29,6 +30,7 @@
             color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
+            position: relative;
         }
 
         .container {
@@ -46,29 +48,26 @@
             background: linear-gradient(135deg, var(--bg-secondary) 0%, #1f1f1f 100%);
             border-radius: 16px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            border: 1px solid var(--quantum-safe);
+            position: relative;
         }
 
-        .btn {
-            padding: 0.8rem 1.5rem;
-            border: none;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-weight: 500;
+        .header::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            border-radius: 18px;
+            border: 2px solid var(--quantum-safe);
+            animation: quantum-pulse 3s infinite;
         }
 
-        .btn-primary {
-            background: var(--accent);
-            color: var(--text-primary);
-            box-shadow: 0 4px 12px rgba(138,43,226,0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(138,43,226,0.4);
+        @keyframes quantum-pulse {
+            0% { opacity: 0.2; }
+            50% { opacity: 1; }
+            100% { opacity: 0.2; }
         }
 
         .thought-form {
@@ -117,11 +116,22 @@
             border-left: 4px solid var(--accent);
             transition: all 0.2s ease;
             position: relative;
+            overflow: hidden;
         }
 
-        .thought-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        .thought-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, 
+                transparent 0%,
+                rgba(138,43,226,0.1) 50%,
+                transparent 100%
+            );
+            pointer-events: none;
         }
 
         .auth-modal {
@@ -135,7 +145,7 @@
             justify-content: center;
             align-items: center;
             z-index: 1000;
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(15px);
         }
 
         .auth-content {
@@ -157,12 +167,6 @@
             color: var(--text-primary);
             margin-bottom: 1.5rem;
             transition: all 0.2s ease;
-        }
-
-        #searchInput:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(138,43,226,0.2);
-            outline: none;
         }
 
         @keyframes slideIn {
@@ -191,7 +195,7 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>📦 Pandora</h1>
+            <h1>📦 Quantum Pandora</h1>
             <div class="toolbar">
                 <button class="btn btn-primary" id="newThoughtBtn">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -250,11 +254,11 @@
 
     <div class="auth-modal" id="authModal">
         <div class="auth-content">
-            <h2>🔒 Unlock Pandora</h2>
+            <h2>🔒 Quantum Unlock</h2>
             <input 
                 type="password" 
                 id="passwordInput" 
-                placeholder="Enter your secret phrase"
+                placeholder="Enter your quantum passphrase"
                 class="auth-input"
             >
             <div class="toolbar" style="margin-top: 1.5rem; gap: 1rem;">
@@ -266,251 +270,226 @@
     </div>
 
     <script>
-        const CryptoLayer = {
-            async encrypt(plaintext, password) {
-                const salt = crypto.getRandomValues(new Uint8Array(16));
-                const iv = crypto.getRandomValues(new Uint8Array(16));
-                
-                const keyMaterial = await crypto.subtle.importKey(
+        class QuantumSecurity {
+            static async generateKeys(password) {
+                const salt = crypto.getRandomValues(new Uint8Array(32));
+                const baseKey = await crypto.subtle.importKey(
                     'raw',
                     new TextEncoder().encode(password),
                     'PBKDF2',
                     false,
-                    ['deriveBits']
+                    ['deriveKey']
                 );
 
-                const rawKey = await crypto.subtle.deriveBits({
-                    name: 'PBKDF2',
-                    salt: salt,
-                    iterations: 100000,
-                    hash: 'SHA-256'
-                }, keyMaterial, 512);
+                const [encryptionKey, authKey] = await Promise.all([
+                    crypto.subtle.deriveKey(
+                        { name: 'PBKDF2', salt, iterations: 210000, hash: 'SHA-512' },
+                        baseKey,
+                        { name: 'AES-GCM', length: 256 },
+                        true,
+                        ['encrypt', 'decrypt']
+                    ),
+                    crypto.subtle.deriveKey(
+                        { name: 'PBKDF2', salt, iterations: 210000, hash: 'SHA-512' },
+                        baseKey,
+                        { name: 'HMAC', hash: 'SHA-512' },
+                        true,
+                        ['sign', 'verify']
+                    )
+                ]);
 
-                const keyBytes = new Uint8Array(rawKey);
-                const aesKey = await crypto.subtle.importKey(
-                    'raw',
-                    keyBytes.slice(0, 32),
-                    'AES-CBC',
-                    false,
-                    ['encrypt']
-                );
-
-                const encrypted = await crypto.subtle.encrypt(
-                    { name: 'AES-CBC', iv: iv },
-                    aesKey,
-                    new TextEncoder().encode(plaintext)
-                );
-
-                const xorCipher = this.xorBytes(new Uint8Array(encrypted), keyBytes.slice(32));
-                const combined = new Uint8Array([...salt, ...iv, ...xorCipher]);
-                return this.addDummies(this.arrayBufferToBase64(combined));
-            },
-
-            async decrypt(ciphertext, password) {
-                const cleanBase64 = this.removeDummies(ciphertext);
-                const combined = this.base64ToArrayBuffer(cleanBase64);
-                
-                const salt = combined.slice(0, 16);
-                const iv = combined.slice(16, 32);
-                const xorCipher = new Uint8Array(combined.slice(32));
-
-                const keyMaterial = await crypto.subtle.importKey(
-                    'raw',
-                    new TextEncoder().encode(password),
-                    'PBKDF2',
-                    false,
-                    ['deriveBits']
-                );
-
-                const rawKey = await crypto.subtle.deriveBits({
-                    name: 'PBKDF2',
-                    salt: salt,
-                    iterations: 100000,
-                    hash: 'SHA-256'
-                }, keyMaterial, 512);
-
-                const keyBytes = new Uint8Array(rawKey);
-                const aesKey = await crypto.subtle.importKey(
-                    'raw',
-                    keyBytes.slice(0, 32),
-                    'AES-CBC',
-                    false,
-                    ['decrypt']
-                );
-
-                const aesData = this.xorBytes(xorCipher, keyBytes.slice(32));
-                const decrypted = await crypto.subtle.decrypt(
-                    { name: 'AES-CBC', iv: iv },
-                    aesKey,
-                    aesData
-                );
-
-                return new TextDecoder().decode(decrypted);
-            },
-
-            xorBytes(data, key) {
-                return data.map((byte, i) => byte ^ key[i % key.length]);
-            },
-
-            addDummies(str) {
-                return str.match(/.{1,4}/g)?.map(chunk => 
-                    chunk + this.randomChar() + this.randomChar()
-                ).join('') || '';
-            },
-
-            removeDummies(str) {
-                return str.match(/.{1,6}/g)?.map(chunk => 
-                    chunk.substring(0,4)
-                ).join('') || '';
-            },
-
-            randomChar() {
-                return 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'[
-                    Math.floor(Math.random() * 64)
-                ];
-            },
-
-            arrayBufferToBase64(buffer) {
-                return btoa(String.fromCharCode(...new Uint8Array(buffer)));
-            },
-
-            base64ToArrayBuffer(base64) {
-                return Uint8Array.from(atob(base64), c => c.charCodeAt(0)).buffer;
+                return { encryptionKey, authKey, salt };
             }
-        };
 
-        class PandoraVault {
+            static async encryptEntry(key, content) {
+                const iv = crypto.getRandomValues(new Uint8Array(12));
+                const encoded = new TextEncoder().encode(JSON.stringify(content));
+                const ciphertext = await crypto.subtle.encrypt(
+                    { name: 'AES-GCM', iv },
+                    key,
+                    encoded
+                );
+                return { iv: Array.from(iv), data: Array.from(new Uint8Array(ciphertext)) };
+            }
+
+            static async decryptEntry(key, encrypted) {
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: 'AES-GCM', iv: new Uint8Array(encrypted.iv) },
+                    key,
+                    new Uint8Array(encrypted.data)
+                );
+                return JSON.parse(new TextDecoder().decode(decrypted));
+            }
+
+            static async createDeviceBinding() {
+                const credential = await navigator.credentials.create({
+                    publicKey: {
+                        challenge: crypto.getRandomValues(new Uint8Array(32)),
+                        rp: { name: "Quantum Pandora" },
+                        user: {
+                            id: crypto.getRandomValues(new Uint8Array(16)),
+                            name: "quantum_user",
+                            displayName: "Quantum Pandora User"
+                        },
+                        pubKeyCredParams: [
+                            { type: "public-key", alg: -8 },  // Ed25519
+                            { type: "public-key", alg: -7 }   // ES256
+                        ],
+                        authenticatorSelection: {
+                            requireResidentKey: true,
+                            userVerification: "required"
+                        }
+                    }
+                });
+                return credential;
+            }
+        }
+
+        class QuantumPandoraVault {
             constructor() {
                 this.thoughts = [];
-                this.password = null;
+                this.sessionKey = null;
+                this.deviceCredential = null;
                 this.initialize();
-                this.checkAuth();
             }
 
-            async checkAuth() {
-                const encryptedVault = localStorage.getItem('encryptedVault');
-                const legacyData = localStorage.getItem('pandoraVault');
+            async initialize() {
+                window.addEventListener('blur', () => this.lockSession());
+                window.addEventListener('beforeunload', () => this.purgeMemory());
+                await this.checkExistingVault();
+                this.setupEventListeners();
+            }
+
+            async checkExistingVault() {
+                const vault = localStorage.getItem('quantumVault');
+                const legacyData = localStorage.getItem('encryptedVault') || localStorage.getItem('pandoraVault');
                 
-                if (encryptedVault) {
+                if (vault) {
                     this.showAuthModal();
                 } else if (legacyData) {
-                    this.migrateLegacyData(legacyData);
+                    await this.migrateLegacyData(legacyData);
                 } else {
-                    this.setPassword();
+                    await this.createNewVault();
                 }
+            }
+
+            async createNewVault() {
+                const password = prompt('Set your quantum passphrase:');
+                if (!password) return;
+                
+                const { encryptionKey, authKey, salt } = await QuantumSecurity.generateKeys(password);
+                this.deviceCredential = await QuantumSecurity.createDeviceBinding();
+                
+                localStorage.setItem('quantumVault', JSON.stringify({
+                    salt,
+                    deviceCredential: this.deviceCredential.rawId,
+                    entries: []
+                }));
+                
+                this.sessionKey = encryptionKey;
+                this.renderThoughts();
             }
 
             async migrateLegacyData(legacyData) {
-                const password = prompt('Set a password to encrypt your existing data:');
-                if (!password) return;
-
+                const password = prompt('Enter new quantum passphrase for migration:');
+                const { encryptionKey } = await QuantumSecurity.generateKeys(password);
+                
                 try {
-                    const encrypted = await CryptoLayer.encrypt(legacyData, password);
-                    localStorage.setItem('encryptedVault', encrypted);
-                    localStorage.removeItem('pandoraVault');
-                    this.thoughts = JSON.parse(legacyData);
-                    this.password = password;
-                    this.renderThoughts();
-                } catch (error) {
-                    alert('Failed to migrate data. Please refresh and try again.');
-                }
-            }
-
-            initialize() {
-                this.setupEventListeners();
-                this.updateTagFilter();
-            }
-
-            async setPassword() {
-                const password = prompt('Set your vault password:');
-                if (!password) return;
-
-                try {
-                    this.password = password;
+                    const decrypted = await CryptoLayer.decrypt(legacyData, password);
+                    this.thoughts = JSON.parse(decrypted);
                     await this.persistData();
+                    localStorage.removeItem('encryptedVault');
+                    localStorage.removeItem('pandoraVault');
                 } catch (error) {
-                    alert('Failed to initialize vault. Please try again.');
+                    alert('Quantum migration failed');
                 }
             }
 
-            showAuthModal() {
-                document.getElementById('authModal').style.display = 'flex';
+            async unlockVault(password) {
+                const storedVault = JSON.parse(localStorage.getItem('quantumVault'));
+                const { encryptionKey } = await QuantumSecurity.generateKeys(password);
+                
+                try {
+                    await navigator.credentials.get({
+                        publicKey: {
+                            challenge: new Uint8Array(32),
+                            allowCredentials: [{
+                                type: 'public-key',
+                                id: new Uint8Array(storedVault.deviceCredential)
+                            }],
+                            userVerification: "required"
+                        }
+                    });
+                    
+                    this.sessionKey = encryptionKey;
+                    this.thoughts = storedVault.entries;
+                    this.renderThoughts();
+                    document.getElementById('authModal').style.display = 'none';
+                } catch (error) {
+                    alert('Quantum authentication failed');
+                }
+            }
+
+            lockSession() {
+                this.sessionKey = null;
+                this.showAuthModal();
+            }
+
+            purgeMemory() {
+                this.sessionKey = null;
+                this.thoughts = [];
             }
 
             async saveThought(content, tags) {
-                const thought = {
-                    id: Date.now(),
-                    content,
-                    tags,
-                    created: new Date().toISOString(),
-                    linked: []
-                };
+                const encryptedEntry = await QuantumSecurity.encryptEntry(
+                    this.sessionKey,
+                    { content, tags, timestamp: Date.now() }
+                );
 
-                this.thoughts.unshift(thought);
+                this.thoughts.unshift({
+                    id: crypto.randomUUID(),
+                    encryptedEntry
+                });
+
                 await this.persistData();
                 this.renderThoughts();
-                this.updateTagFilter();
             }
 
             async persistData() {
-                if (!this.password) return;
-                
-                try {
-                    const encrypted = await CryptoLayer.encrypt(
-                        JSON.stringify(this.thoughts),
-                        this.password
-                    );
-                    localStorage.setItem('encryptedVault', encrypted);
-                } catch (error) {
-                    alert('Failed to save data. Please check your connection.');
-                }
+                const vault = JSON.parse(localStorage.getItem('quantumVault'));
+                vault.entries = this.thoughts;
+                localStorage.setItem('quantumVault', JSON.stringify(vault));
             }
 
-            filterThoughts() {
-                const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-                const selectedTag = document.getElementById('tagFilter').value;
-
-                return this.thoughts.filter(thought => {
-                    const matchesSearch = thought.content.toLowerCase().includes(searchTerm) ||
-                        thought.tags.some(tag => tag.toLowerCase().includes(searchTerm));
-                    
-                    const matchesTag = !selectedTag || thought.tags.includes(selectedTag);
-                    
-                    return matchesSearch && matchesTag;
-                });
-            }
-
-            renderThoughts() {
-                const filteredThoughts = this.filterThoughts();
+            async renderThoughts() {
                 const grid = document.getElementById('thoughtGrid');
-                grid.innerHTML = filteredThoughts.map(thought => `
-                    <div class="thought-card">
-                        <div class="thought-date" style="color: var(--text-secondary); font-size: 0.9em;">
-                            ${new Date(thought.created).toLocaleDateString('en-US', {
-                                weekday: 'short',
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                            })}
+                grid.innerHTML = await Promise.all(this.thoughts.map(async entry => {
+                    const decrypted = await QuantumSecurity.decryptEntry(
+                        this.sessionKey,
+                        entry.encryptedEntry
+                    );
+                    
+                    return `
+                        <div class="thought-card">
+                            <div class="thought-date" style="color: var(--text-secondary); font-size: 0.9em;">
+                                ${new Date(decrypted.timestamp).toLocaleDateString('en-US', {
+                                    weekday: 'short',
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                })}
+                            </div>
+                            <div class="thought-content" style="margin: 1rem 0;">
+                                ${decrypted.content}
+                            </div>
+                            <div class="thought-tags">
+                                ${decrypted.tags.map(tag => `
+                                    <span class="tag">${tag}</span>
+                                `).join('')}
+                            </div>
                         </div>
-                        <div class="thought-content" style="margin: 1rem 0;">
-                            ${thought.content}
-                        </div>
-                        <div class="thought-tags">
-                            ${thought.tags.map(tag => `
-                                <span class="tag">${tag}</span>
-                            `).join('')}
-                        </div>
-                    </div>
-                `).join('');
-            }
-
-            updateTagFilter() {
-                const allTags = [...new Set(this.thoughts.flatMap(t => t.tags))];
-                const tagFilter = document.getElementById('tagFilter');
-                tagFilter.innerHTML = `<option value="">All Tags</option>${
-                    allTags.map(tag => `<option>${tag}</option>`).join('')
-                }`;
+                    `;
+                }));
             }
 
             setupEventListeners() {
@@ -529,41 +508,18 @@
                     }
                 });
 
-                document.getElementById('cancelThought').addEventListener('click', () => {
-                    this.clearForm();
+                document.getElementById('unlockBtn').addEventListener('click', async () => {
+                    const password = document.getElementById('passwordInput').value;
+                    await this.unlockVault(password);
                 });
 
                 document.getElementById('tagInput').addEventListener('keypress', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
                         const tag = e.target.value.trim();
-                        if (tag) {
-                            this.addTag(tag);
-                            e.target.value = '';
-                        }
+                        if (tag) this.addTag(tag);
+                        e.target.value = '';
                     }
-                });
-
-                document.getElementById('unlockBtn').addEventListener('click', async () => {
-                    const input = document.getElementById('passwordInput').value;
-                    try {
-                        const encryptedData = localStorage.getItem('encryptedVault');
-                        const decrypted = await CryptoLayer.decrypt(encryptedData, input);
-                        this.thoughts = JSON.parse(decrypted);
-                        this.password = input;
-                        document.getElementById('authModal').style.display = 'none';
-                        this.renderThoughts();
-                    } catch (error) {
-                        alert('Invalid password or corrupted data!');
-                    }
-                });
-
-                document.getElementById('searchInput').addEventListener('input', () => {
-                    this.renderThoughts();
-                });
-
-                document.getElementById('tagFilter').addEventListener('change', () => {
-                    this.renderThoughts();
                 });
             }
 
@@ -588,9 +544,13 @@
                 document.getElementById('thoughtInput').value = '';
                 document.getElementById('tagContainer').innerHTML = '';
             }
+
+            showAuthModal() {
+                document.getElementById('authModal').style.display = 'flex';
+            }
         }
 
-        const pandora = new PandoraVault();
+        const quantumPandora = new QuantumPandoraVault();
     </script>
 </body>
 </html>
